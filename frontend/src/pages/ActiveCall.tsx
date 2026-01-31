@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { AudioVisualizer } from '../components/AudioVisualizer';
@@ -16,7 +16,11 @@ export const ActiveCall = () => {
     // No explicit audio logic here anymore
 
     // Startup sound effect
+    const hasPlayedSound = useRef(false);
     useEffect(() => {
+        if (hasPlayedSound.current) return;
+        hasPlayedSound.current = true;
+
         const playStartupSound = async () => {
             try {
                 // Wait for context to be ready (captured in prev effect or new one)
@@ -125,16 +129,19 @@ export const ActiveCall = () => {
             {/* Rotating Mesh Gradient Border */}
             {/* We create a container that fits the screen but has a gradient border */}
             <div className="absolute inset-0 z-0 p-[2px] rounded-[3rem] overflow-hidden">
-                {/* The Rotating Gradient Layer */}
+                {/* The Rotating Gradient Layer - CHANGED TO STATIC PULSING to prevent corner glitches */}
                 <motion.div
                     className={cn(
-                        "absolute inset-[-50%] w-[200%] h-[200%] bg-[conic-gradient(var(--tw-gradient-stops))] opacity-100 transition-colors duration-1000",
+                        "absolute inset-[-50%] w-[200%] h-[200%] opacity-100 transition-colors duration-1000",
                         mesh.from, mesh.via, mesh.to
                     )}
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    // Removed rotation to keep corners static as requested
+                    animate={{
+                        opacity: [0.8, 1, 0.8],
+                        scale: [1, 1.02, 1]
+                    }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                     style={{
-                        // This creates the fluid mesh look by mixing conic gradient stops
                         backgroundImage: `conic-gradient(from 0deg, var(--tw-gradient-from), var(--tw-gradient-via), var(--tw-gradient-to), var(--tw-gradient-from))`
                     }}
                 />
@@ -144,7 +151,7 @@ export const ActiveCall = () => {
 
                 {/* Internal Inner Glow (Edge Lit) */}
                 <div className={cn(
-                    "absolute inset-0 z-20 rounded-[3rem] shadow-[inset_0_0_60px_rgba(0,0,0,0.8)] transition-shadow duration-1000",
+                    "absolute inset-0 z-20 rounded-[3rem] shadow-[inset_0_0_60px_rgba(0,0,0,0.3)] transition-shadow duration-1000",
                     status === 'safe' && "shadow-[inset_0_0_40px_rgba(34,197,94,0.3)]",
                     status === 'warning' && "shadow-[inset_0_0_40px_rgba(245,158,11,0.3)]",
                     status === 'danger' && "shadow-[inset_0_0_40px_rgba(239,68,68,0.4)]"
@@ -185,6 +192,7 @@ export const ActiveCall = () => {
                         {/* AudioVisualizer with real mic data */}
                         <AudioVisualizer
                             isActive={true}
+                            status={status} // Pass status for color change behavior
                             className="relative z-10"
                         />
                     </div>
