@@ -1,297 +1,240 @@
-Here is the comprehensive Product Requirements Document (PRD) and Technical Implementation Guide for Project AcademicAgent. This document bridges the gap between high-level product goals and low-level engineering execution, specifically designed for a Senior Engineering team.
-
-Part 1: Product Requirements Document (PRD)
+Product Requirement Document (PRD): kova (Python Edition)
+Version: 2.0 (FastAPI + Python Backend) Date: January 31, 2026
 1. Executive Summary
-Project Name: AcademicAgent
-Problem: Students manage academic lives across fragmented platforms (LMS, static PDF syllabi, manual calendar entry), leading to missed deadlines and poor time management. Solution: An Agentic AI application that ingests raw academic documents (PDFs), intelligently extracts deliverables, negotiates schedule conflicts via natural language, and autonomously manages a Google Calendar. Primary Goal: To build a robust, containerized AI agent capable of multi-turn reasoning to automate academic scheduling and information retrieval.
+kova is a real-time scam detection system.
+* Input: Live audio from a laptop microphone (capturing speakerphone audio).
+* Processing: Python backend streams audio to a transcription engine and analyzes text for scam patterns.
+* Output: Real-time "Safe/Danger" dashboard for the user and SMS alerts for relatives.
 
-2. User Stories & Functional Requirements
-ID	User Story	Acceptance Criteria
-US-1	As a student, I want to upload a PDF syllabus so that its deadlines are automatically extracted.	Agent parses PDF, identifies 100% of dates, and presents a structured list for confirmation.
-US-2	As a student, I want the agent to check my availability before booking.	Agent queries Google Calendar API for conflicts before creating events.
-US-3	As a student, I want to query specific course policies (e.g., "Late policy?").	Agent performs RAG (Retrieval Augmented Generation) on stored syllabus vectors to answer accurately.
-US-4	As a user, I want automated reminders for upcoming exams.	System triggers a background notification 24h and 1h before high-priority events.
-3. Technical Stack Justification
-Docker & Docker Compose: Ensures identical dev/prod environments. Orchestrates the API, Worker, and Redis services.
-Redis: Acts as the Message Broker for the asynchronous task queue (Celery) and a high-speed store for LangGraph conversation state.
-Supabase (PostgreSQL): Essential for persisting User Auth (OAuth tokens), User Profiles, and structured Course Metadata. It replaces local SQLite to allow for multi-user scaling.
-Pydantic: Enforces strict data validation. If the LLM returns a malformed date or missing field, Pydantic catches it before it corrupts the database.
-Celery: Distributed task queue. Decouples heavy AI processing (PDF parsing) and background reminders from the main API thread.
-4. Success Metrics (MVP)
-Extraction Accuracy: >90% of dates correctly identified from standard syllabi.
-Latency: Calendar queries return within <2 seconds; PDF processing completes within <15 seconds.
-Reliability: Background reminders fire within ±1 minute of scheduled time.
-Part 2: Technical Implementation Guide
-This guide assumes a Linux/Mac terminal environment.
+2. The Tech Stack
+* Frontend: React (Vite) + Tailwind CSS. (Keep it simple, no Next.js needed if we have a Python backend).
+* Backend: FastAPI (Python 3.10+).
+* Database: Supabase (PostgreSQL).
+* Transcription: Deepgram Python SDK (Free Tier).
+    * Why: It has a native Python library that handles the WebSocket streaming for you. It is accurate and ultra-fast.
+* Intelligence: Keywords AI (Proxy) → Groq (Llama 3 70B).
+* Notifications: Twilio (Python Helper Library).
 
-1. Environment & Secrets Management
-Create a .env file in the project root. Do not commit this to Git.
+3. Architecture & Data Flow
+1. React Client: Captures microphone audio → Sends binary blobs via WebSocket to FastAPI.
+2. FastAPI: Receives audio → Pushes to Deepgram Live Client.
+3. Deepgram: Returns real-time text transcript to FastAPI.
+4. FastAPI (Logic):
+    * Accumulates text buffer.
+    * Every 1-2 sentences, sends text to Keywords AI.
+    * If risk_score > 80, triggers Twilio SMS.
+    * Sends transcript + risk_score + suggested_prompt back to React via WebSocket.
 
-Bash
-# General
-PROJECT_NAME="AcademicAgent"
-ENV="development"
-
-# OpenAI / LLM
-OPENAI_API_KEY="sk-..."
-
-# Google Cloud (OAuth)
-GOOGLE_CLIENT_ID="<your-client-id>.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET="<your-client-secret>"
-GOOGLE_REDIRECT_URI="http://localhost:8000/auth/callback"
-
-# Supabase
-SUPABASE_URL="https://<project-ref>.supabase.co"
-SUPABASE_KEY="<your-anon-key>"
-SUPABASE_DB_URI="postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres"
-
-# Redis
-REDIS_URL="redis://redis:6379/0"
-2. Docker Infrastructure
-We need a containerized environment running the FastAPI Application, a Celery Worker (for reminders/heavy lifting), and Redis.
-
-File: docker-compose.yml
-
-YAML
-version: '3.8'
-
-services:
-  # The Main API / Agent Service
-  api:
-    build: .
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-    volumes:
-      - .:/app
-    ports:
-      - "8000:8000"
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - redis
-
-  # Background Worker (Celery)
-  worker:
-    build: .
-    command: celery -A app.worker.celery_app worker --loglevel=info
-    volumes:
-      - .:/app
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - redis
-
-  # Message Broker & Cache
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-File: Dockerfile
-
-Dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-# Install system dependencies (needed for some Python packages)
-RUN apt-get update && apt-get install -y gcc libpq-dev
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-3. Pydantic Data Schemas
-Define strict types to govern data flowing into the system.
-
-File: app/schemas.py
-
-Python
-from pydantic import BaseModel, Field, HttpUrl
-from typing import Optional, List
-from datetime import datetime
-
-# Settings / Config Model
-class Settings(BaseModel):
-    openai_api_key: str
-    redis_url: str
-
-# Google Calendar Event Model
-class CalendarEvent(BaseModel):
-    summary: str = Field(..., description="Title of the event")
-    description: Optional[str] = None
-    start_time: datetime
-    end_time: datetime
-    location: Optional[str] = None
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "summary": "CS101 Midterm",
-                "start_time": "2023-10-25T14:00:00",
-                "end_time": "2023-10-25T15:30:00"
-            }
-        }
-
-# User Profile (synced with Supabase)
-class UserProfile(BaseModel):
-    id: str
-    email: str
-    google_refresh_token: Optional[str] = None # ENCYYPT THIS IN DB
-4. Supabase Setup (Database & Auth)
-Evaluation: Supabase is necessary here. Storing Google OAuth Refresh Tokens locally (JSON file) is insecure and fails in Docker containers (containers are ephemeral). Supabase provides a hosted Postgres DB to securely store user state and tokens.
-
-SQL Schema Initialization: Run this in the Supabase SQL Editor:
-
+4. Database Schema (Supabase)
+Set this up in the Supabase SQL Editor.
 SQL
--- Users table to extend Supabase Auth
-create table public.profiles (
-  id uuid references auth.users not null,
-  email text not null,
-  google_refresh_token text, -- Store encrypted
-  preferences jsonb,
-  primary key (id)
+
+-- Table: Users (Linked to Supabase Auth)
+create table profiles (
+  id uuid references auth.users not null primary key,
+  full_name text,
+  phone_number text, -- The user's number
+  emergency_contact_one_name text,
+  emergency_contact_one_number text -- The relative to alert
+  emergency_contact_two_name text,
+  emergency_contact_two_number text -- The relative to alert
 );
 
--- Tasks table for the Agent
-create table public.academic_events (
-  id uuid default uuid_generate_v4() primary key,
-  user_id uuid references public.profiles(id),
-  title text not null,
-  start_at timestamptz not null,
-  end_at timestamptz not null,
-  is_synced_to_gcal boolean default false
+-- Table: Known Scams (for blocking numbers)
+create table suspicious_numbers (
+  phone_number text primary key,
+  report_count int default 1,
+  last_reported_at timestamptz default now()
 );
-5. Google Calendar Integration (OAuth2)
-The critical path is handling the OAuth handshake to get the refresh_token.
 
-Step 1: Create Credentials in Google Cloud Console. Step 2: Implement the Auth Flow (app/auth.py).
+5. End-to-End Implementation Plan
+Phase 1: Project Setup (Python & React)
+A. Backend (FastAPI) Structure your folder like this:
+Plaintext
 
+/backend
+  ├── main.py            # Entry point
+  ├── .env               # API Keys
+  ├── requirements.txt   # fastapi, uvicorn, deepgram-sdk, supabase, openai, twilio
+  └── /routers
+      └── websocket.py   # The core audio logic
+B. Frontend (React + Vite)
+Bash
+
+npm create vite@latest frontend -- --template react-ts
+npm install lucide-react socket.io-client
+
+Phase 2: The WebSocket Audio Stream (The Hardest Part)
+This is where Python shines. We need a WebSocket endpoint that accepts audio and keeps a connection open to Deepgram.
+backend/routers/websocket.py (Conceptual Code):
 Python
-from google_auth_oauthlib.flow import Flow
-from app.config import settings
 
-def create_google_flow():
-    return Flow.from_client_config(
-        {
-            "web": {
-                "client_id": settings.GOOGLE_CLIENT_ID,
-                "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-            }
-        },
-        scopes=["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/drive.readonly"],
-        redirect_uri=settings.GOOGLE_REDIRECT_URI
-    )
-
-# Use this wrapper to build the Agent Tool
-def build_calendar_service(credentials):
-    from googleapiclient.discovery import build
-    return build('calendar', 'v3', credentials=credentials)
-6. Scheduling Engine (Celery)
-We use Celery to handle background reminders so the Agent doesn't have to "wait" for the event time.
-
-File: app/worker.py
-
-Python
-from celery import Celery
+from fastapi import APIRouter, WebSocket
+from deepgram import DeepgramClient, LiveOptions
 import os
+import asyncio
 
-redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-celery_app = Celery("academic_agent", broker=redis_url, backend=redis_url)
+router = APIRouter()
 
-@celery_app.task
-def schedule_reminder_notification(email: str, event_title: str):
-    # Logic to send email/slack notification
-    print(f"REMINDER: {event_title} is coming up for {email}!")
-    # Integration point: SendGrid or Twilio
-Triggering the Task (from Agent Logic):
+@router.websocket("/ws/listen")
+async def listen(websocket: WebSocket):
+    await websocket.accept()
+    
+    # 1. Initialize Deepgram (The "Free" Transcription)
+    deepgram = DeepgramClient(os.getenv("DEEPGRAM_API_KEY"))
+    
+    # 2. Setup the Deepgram Live Connection
+    dg_connection = deepgram.listen.live.v("1")
+    
+    # Define what happens when we get text back
+    def on_message(self, result, **kwargs):
+        sentence = result.channel.alternatives[0].transcript
+        if len(sentence) > 0:
+            # TODO: Send this sentence to Scam Detector AI
+            # TODO: Send result back to Frontend
+            print(f"Transcript: {sentence}")
 
-Python
-from app.worker import schedule_reminder_notification
-from datetime import timedelta
+    dg_connection.on(LiveTranscriptionEvents.Transcript, on_message)
 
-# When agent creates an event:
-reminder_time = event.start_time - timedelta(hours=1)
-schedule_reminder_notification.apply_async(
-    args=[user_email, event.summary], 
-    eta=reminder_time # Celery handles the specific execution time
-)
-Part 3: Operational Requirements
-1. Security & Token Management
-Encryption: Never store google_refresh_token as plain text in Supabase. Use a library like cryptography (Fernet) to encrypt the token before writing to SQL and decrypt it only when initializing the Google Client.
-Scope Minimization: Start with calendar.events (read/write). Do not request calendar (full account access) unless absolutely necessary.
-2. Error Handling Strategy
-Rate Limits: Wrap all Google API calls with a retry decorator (e.g., tenacity) with exponential backoff.
-Policy: If HTTP 429 is received, wait 2s, 4s, 8s, then fail gracefully.
-Token Expiry: The system must check if the Access Token is expired before every tool call. If expired, use the Refresh Token to fetch a new one silently.
-3. Deployment Checklist
-[ ] Set up Supabase Project & Run SQL Schema.
-[ ] Configure Google Cloud OAuth Consent Screen.
-[ ] Populate .env file.
-[ ] Run docker-compose up --build.
-[ ] Verify Redis connection (docker exec -it <container_id> redis-cli ping).
-Technology Decisions
-
-**Frontend**: Streamlit Dashboard
-- Streamlit will serve as the user-facing interface
-- Provides rapid prototyping with Python-native components
-- No CORS configuration needed when running on same origin; if separate, FastAPI middleware will allow Streamlit's origin
-
-**Notification Channel**: ntfy.sh Push Notifications
-- Lightweight, self-hostable push notification service
-- No account required for basic usage
-- Simple HTTP POST to send notifications
-
-```python
-# Example ntfy.sh integration
-import httpx
-
-async def send_reminder(topic: str, title: str, message: str):
-    await httpx.post(
-        f"https://ntfy.sh/{topic}",
-        headers={"Title": title},
-        content=message
+    # 3. Configure options (English, Smart Formatting)
+    options = LiveOptions(
+        model="nova-2", 
+        language="en-US", 
+        smart_format=True,
     )
-```
-
-**PDF Processing**: Dual-Mode (Text + OCR)
-- **Standard Text PDFs**: Use `PyMuPDF` (fitz) for fast, direct text extraction
-- **Scanned Image PDFs**: Use `pytesseract` + `pdf2image` for OCR processing
-- Auto-detection: If text extraction yields minimal content, fallback to OCR
-
-```python
-# Example PDF processing logic
-import fitz  # PyMuPDF
-from pdf2image import convert_from_path
-import pytesseract
-
-def extract_text(pdf_path: str) -> str:
-    # Try direct text extraction first
-    doc = fitz.open(pdf_path)
-    text = "".join(page.get_text() for page in doc)
     
-    # Fallback to OCR if text is sparse
-    if len(text.strip()) < 100:
-        images = convert_from_path(pdf_path)
-        text = "\n".join(pytesseract.image_to_string(img) for img in images)
+    await dg_connection.start(options)
+
+    # 4. Loop: Receive Audio from React -> Send to Deepgram
+    try:
+        while True:
+            # Receive audio blob from frontend
+            data = await websocket.receive_bytes()
+            # Send to Deepgram
+            await dg_connection.send(data)
+    except Exception as e:
+        print(f"Connection closed: {e}")
+    finally:
+        await dg_connection.finish()
+
+Phase 3: The "Scam Brain" (Keywords AI + Groq)
+We need a function that takes the transcript and decides if it's a scam.
+backend/services/scam_detector.py:
+Python
+
+from openai import OpenAI
+import os
+import json
+
+# Initialize Keywords AI (acting as OpenAI)
+client = OpenAI(
+    base_url="https://api.keywordsai.co/api",
+    api_key=os.getenv("KEYWORDS_AI_API_KEY")
+)
+
+def analyze_transcript(transcript_text):
+    response = client.chat.completions.create(
+        model="llama-3-70b-8192", # Using Groq via Keywords AI
+        messages=[
+            {"role": "system", "content": """
+                You are a scam detection AI. Return a JSON object with:
+                - risk_score (0-100)
+                - reasoning (string)
+                - suggested_question (string, something the user can ask to verify the caller)
+                
+                Example JSON:
+                {"risk_score": 85, "reasoning": "Caller asking for gift cards", "suggested_question": "Ask for their employee ID"}
+            """},
+            {"role": "user", "content": transcript_text}
+        ],
+        extra_body={"prompt_name": "kova-guard-v1"} # Optional: Track in Keywords Dashboard
+    )
     
-    return text
-```
+    # Parse the JSON string from the LLM
+    content = response.choices[0].message.content
+    return json.loads(content) 
 
-**Additional Dependencies** (add to requirements.txt):
-```
-streamlit
-httpx
-PyMuPDF
-pytesseract
-pdf2image
-pillow
-```
+Phase 4: Frontend Audio Capture
+The React app needs to capture audio and send it to the FastAPI WebSocket.
+frontend/src/components/AudioRecorder.tsx:
+TypeScript
 
-**System Dependencies** (add to Dockerfile):
-```dockerfile
-RUN apt-get update && apt-get install -y \
-    gcc libpq-dev \
-    tesseract-ocr \
-    poppler-utils
-```
+import { useState, useRef } from 'react';
+
+const AudioRecorder = () => {
+  const [status, setStatus] = useState('idle');
+  const socketRef = useRef<WebSocket | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+
+  const startRecording = async () => {
+    // 1. Open WebSocket to FastAPI
+    socketRef.current = new WebSocket('ws://localhost:8000/ws/listen');
+
+    // 2. Get Microphone Stream
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    
+    // 3. Setup MediaRecorder
+    mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+    // 4. Send audio chunks every 250ms
+    mediaRecorderRef.current.ondataavailable = (event) => {
+      if (event.data.size > 0 && socketRef.current?.readyState === WebSocket.OPEN) {
+        socketRef.current.send(event.data);
+      }
+    };
+
+    mediaRecorderRef.current.start(250); // Chunk size
+    setStatus('recording');
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    socketRef.current?.close();
+    setStatus('idle');
+  };
+
+  return (
+    <button onClick={status === 'idle' ? startRecording : stopRecording}>
+      {status === 'idle' ? 'Start Protection' : 'Stop'}
+    </button>
+  );
+};
+
+Phase 5: The "Interrogation" & Alerts
+Logic in FastAPI (websocket.py): Update the on_message function to actually do the work.
+Python
+
+accumulated_transcript = ""
+
+def on_message(self, result, **kwargs):
+    sentence = result.channel.alternatives[0].transcript
+    
+    if len(sentence) > 10: # Only analyze substantial phrases
+        # 1. Get Analysis
+        analysis = analyze_transcript(sentence)
+        
+        # 2. Check for Danger
+        if analysis['risk_score'] > 85:
+            send_sms_alert() # Call Twilio function
+            
+        # 3. Send back to Frontend
+        asyncio.run(websocket.send_json({
+            "type": "analysis",
+            "transcript": sentence,
+            "risk_score": analysis['risk_score'],
+            "prompt": analysis['suggested_question']
+        }))
+
+6. Onboarding Flow (The Demo Setup)
+Since you are demoing this, you need a smooth setup flow:
+1. Login: User enters name/email (Supabase Auth).
+2. Relative Setup: User enters "Grandson's Phone Number". Save this to Supabase profiles.
+3. Mic Check: A visualizer bar that bounces when you speak (proves it's working).
+4. Simulation Mode (Crucial for Demo):
+    * Add a toggle on the frontend: "Simulation Mode".
+    * If active, instead of using the microphone, the frontend plays a pre-recorded mp3 of a scam call (so the judges hear it clearly) and streams that audio to the backend. This guarantees a perfect demo every time.
+7. Final Checklist for Success
+1. Latency: Ensure the MediaRecorder timeslice is small (250ms). If it's too large (e.g., 1000ms), the transcription will lag by 1 second.
+2. Venv: Use a Python virtual environment (python -m venv venv) so your libraries don't conflict.
+3. Twilio Verified IDs: If you use a free Twilio account, you can only send SMS to numbers you have verified. Do this before the presentation.
+4. Deepgram API Key: Keep it in your .env file on the backend. Do not expose it to the frontend.
