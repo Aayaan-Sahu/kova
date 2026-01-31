@@ -2,8 +2,8 @@ from typing import List, Dict
 from openai import OpenAI
 import os
 import json
-from ..prompts import SCAM_DETECTION_SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
-from .session_state import SessionState
+from prompts.scam_detection import SCAM_DETECTION_SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
+from services.session_state import SessionState
 
 # Client will be initialized lazily
 _client = None
