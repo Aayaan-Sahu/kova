@@ -5,11 +5,18 @@ import json
 from ..prompts import SCAM_DETECTION_SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
 from .session_state import SessionState
 
-# Initialize Keywords AI (acting as OpenAI proxy for Groq/Llama)
-client = OpenAI(
-    base_url="https://api.keywordsai.co/api",
-    api_key=os.getenv("KEYWORDS_AI_API_KEY")
-)
+# Client will be initialized lazily
+_client = None
+
+def _get_client():
+    global _client
+    if _client is None:
+        _client = OpenAI(
+            base_url="https://api.keywordsai.co/api",
+            api_key=os.getenv("KEYWORDS_AI_API_KEY")
+        )
+    return _client
+
 
 def _format_message(msg: Dict[str, str]) -> str:
     """Helper to format a single message dict into 'Speaker: Text'."""
@@ -49,8 +56,8 @@ def analyze_transcript(new_chunk: Dict[str, str], session: SessionState) -> None
     )
 
     try:
-        response = client.chat.completions.create(
-            model="llama-3-70b-8192", 
+        response = _get_client().chat.completions.create(
+            model="groq/llama-3.3-70b-versatile", 
             messages=[
                 {"role": "system", "content": SCAM_DETECTION_SYSTEM_PROMPT},
                 {"role": "user", "content": user_content}
