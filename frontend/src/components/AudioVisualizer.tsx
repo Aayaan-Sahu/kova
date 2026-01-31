@@ -6,10 +6,11 @@ interface AudioVisualizerProps {
     isActive: boolean;
     className?: string;
     status?: 'safe' | 'warning' | 'danger';
+    audioStream?: MediaStream | null;
     // Removed 'levels' and 'intensity' as this component now self-manages
 }
 
-export const AudioVisualizer = ({ isActive, className, status = 'safe' }: AudioVisualizerProps) => {
+export const AudioVisualizer = ({ isActive, className, status = 'safe', audioStream }: AudioVisualizerProps) => {
     // 5 bars for symmetry
     const bars = [0, 1, 2, 3, 4];
     const [levels, setLevels] = useState<number[]>([0.02, 0.02, 0.02, 0.02, 0.02]);
@@ -41,17 +42,28 @@ export const AudioVisualizer = ({ isActive, className, status = 'safe' }: AudioV
                 analyser.fftSize = 64;
                 analyserRef.current = analyser;
 
-                // Try microphone access
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    const source = ctx.createMediaStreamSource(stream);
+                // Shared Stream Logic
+                if (audioStream) {
+                    // Use passed stream
+                    const source = ctx.createMediaStreamSource(audioStream);
                     sourceRef.current = source;
                     source.connect(analyser);
 
                     const bufferLength = analyser.frequencyBinCount;
                     dataArrayRef.current = new Uint8Array(bufferLength) as any;
-                } catch (micErr) {
-                    console.warn("Visualizer mic access failed:", micErr);
+                } else {
+                    // Fallback to internal mic access
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        const source = ctx.createMediaStreamSource(stream);
+                        sourceRef.current = source;
+                        source.connect(analyser);
+
+                        const bufferLength = analyser.frequencyBinCount;
+                        dataArrayRef.current = new Uint8Array(bufferLength) as any;
+                    } catch (micErr) {
+                        console.warn("Visualizer mic access failed:", micErr);
+                    }
                 }
 
                 // Animation Loop
@@ -132,7 +144,7 @@ export const AudioVisualizer = ({ isActive, className, status = 'safe' }: AudioV
             sourceRef.current?.disconnect();
             audioContextRef.current?.close();
         };
-    }, [isActive]);
+    }, [isActive, audioStream]);
 
 
     const getStatusStyles = () => {

@@ -106,6 +106,8 @@ export const ActiveCall = () => {
         else setStatus('danger');
     }, [riskScore]);
 
+    const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+
     const startListening = useCallback(async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -113,15 +115,21 @@ export const ActiveCall = () => {
                     deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
                     echoCancellation: true,
                     noiseSuppression: true,
+                    autoGainControl: false, // Important for reliable visualizer levels
                 }
             });
             streamRef.current = stream;
+            setMediaStream(stream); // Share with Visualizer
 
             const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
             const audioContext = new AudioContextClass();
             audioContextRef.current = audioContext;
             await audioContext.resume();
 
+            // Create two branches: one for Analysis (Visualizer), one for Processing (WebSocket)
+            // Branch 1 is handled by passing 'stream' to AudioVisualizer component
+
+            // Branch 2: Sending data to backend
             const source = audioContext.createMediaStreamSource(stream);
             const processor = audioContext.createScriptProcessor(4096, 1, 1);
             processorRef.current = processor;
@@ -136,6 +144,7 @@ export const ActiveCall = () => {
                 processor.onaudioprocess = (e) => {
                     if (socketRef.current?.readyState === WebSocket.OPEN) {
                         const inputData = e.inputBuffer.getChannelData(0);
+                        // Downsample or process if needed, but here we send raw PCM
                         const int16Data = new Int16Array(inputData.length);
                         for (let i = 0; i < inputData.length; i++) {
                             const s = Math.max(-1, Math.min(1, inputData[i]));
@@ -146,8 +155,10 @@ export const ActiveCall = () => {
                 };
 
                 source.connect(processor);
-                processor.connect(audioContext.destination);
+                processor.connect(audioContext.destination); // Essential for script processor to run
             };
+
+            // ... (rest of websocket handlers) ...
 
             // Handle incoming transcripts with speaker info
             socketRef.current.onmessage = (event) => {
@@ -186,6 +197,7 @@ export const ActiveCall = () => {
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
         }
+        setMediaStream(null); // Clear for visualizer fallback
 
         if (socketRef.current) {
             socketRef.current.close();
@@ -326,7 +338,8 @@ export const ActiveCall = () => {
                         )} />
                         <AudioVisualizer
                             isActive={true}
-                            status={status} // Pass status for color change behavior
+                            status={status}
+                            audioStream={mediaStream} // Pass shared stream
                             className="relative z-10"
                         />
                     </div>
