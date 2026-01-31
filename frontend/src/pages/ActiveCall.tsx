@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { AudioVisualizer } from '../components/AudioVisualizer';
 import { cn } from '../utils/cn';
-import { ShieldAlert, ShieldCheck, ShieldQuestion, PhoneOff } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, ShieldQuestion, PhoneOff, X, MessageCircleQuestion } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface AudioDevice {
@@ -19,12 +19,19 @@ interface TranscriptSegment {
 interface TranscriptMessage {
     type: string;
     segments: TranscriptSegment[];
+    risk_score: number;
+    confidence_score: number;
+    reasoning: string;
+    suggested_question: string | null;
+    alert_sent: boolean;
 }
 
 export const ActiveCall = () => {
     const navigate = useNavigate();
     const [riskScore, setRiskScore] = useState(0);
+    const [confidenceScore, setConfidenceScore] = useState(0);
     const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([]);
+    const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
     const [status, setStatus] = useState<'safe' | 'warning' | 'danger'>('safe');
     const [isListening, setIsListening] = useState(false);
     const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
@@ -166,8 +173,21 @@ export const ActiveCall = () => {
                     const message: TranscriptMessage = JSON.parse(event.data);
                     console.log('Received:', message);
 
-                    if (message.type === 'transcript' && message.segments.length > 0) {
-                        setTranscriptSegments(prev => [...prev, ...message.segments]);
+                    if (message.type === 'transcript') {
+                        if (message.segments.length > 0) {
+                            setTranscriptSegments(prev => [...prev, ...message.segments]);
+                        }
+                        setRiskScore(message.risk_score);
+                        setConfidenceScore(message.confidence_score);
+
+                        // Add new question if not duplicate
+                        if (message.suggested_question) {
+                            setSuggestedQuestions(prev => {
+                                if (prev.includes(message.suggested_question!)) return prev;
+                                const updated = [message.suggested_question!, ...prev];
+                                return updated.slice(0, 3); // Keep max 3
+                            });
+                        }
                     }
                 } catch (e) {
                     console.error('Error parsing message:', e);
@@ -215,6 +235,12 @@ export const ActiveCall = () => {
     const clearTranscript = () => {
         setTranscriptSegments([]);
         setRiskScore(0);
+        setConfidenceScore(0);
+        setSuggestedQuestions([]);
+    };
+
+    const dismissQuestion = (question: string) => {
+        setSuggestedQuestions(prev => prev.filter(q => q !== question));
     };
 
     // Mesh Gradient Colors
@@ -386,6 +412,40 @@ export const ActiveCall = () => {
                             </AnimatePresence>
                         </div>
                     </div>
+
+                    {/* Suggested Questions */}
+                    <AnimatePresence>
+                        {suggestedQuestions.length > 0 && riskScore < 70 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="w-full space-y-2 mt-4"
+                            >
+                                <div className="flex items-center gap-2 text-purple-400 text-sm font-medium">
+                                    <MessageCircleQuestion className="w-4 h-4" />
+                                    <span>Ask to verify caller:</span>
+                                </div>
+                                {suggestedQuestions.map((question, idx) => (
+                                    <motion.div
+                                        key={question}
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: 20 }}
+                                        className="flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 rounded-lg px-4 py-3"
+                                    >
+                                        <span className="flex-1 text-purple-200 text-sm">"{question}"</span>
+                                        <button
+                                            onClick={() => dismissQuestion(question)}
+                                            className="text-purple-400 hover:text-purple-200 transition-colors"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </motion.div>
+                                ))}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
                 {/* Controls */}
