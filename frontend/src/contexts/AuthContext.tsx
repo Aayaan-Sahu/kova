@@ -88,6 +88,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data, error: authError } = await supabase.auth.signUp({
             email,
             password,
+            options: {
+                data: {
+                    full_name: profileData.full_name,
+                    phone_number: profileData.phone_number,
+                }
+            }
         });
 
         if (authError) {
@@ -95,10 +101,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (data.user) {
-            // Create profile row
+            // Create profile row using upsert to be more resilient
+            // We use upsert because a database trigger might have already created the row
             const { error: profileError } = await supabase
                 .from('profiles')
-                .insert({
+                .upsert({
                     id: data.user.id,
                     full_name: profileData.full_name ?? null,
                     phone_number: profileData.phone_number ?? null,
@@ -106,12 +113,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     emergency_contact_1_phone: profileData.emergency_contact_1_phone ?? null,
                     emergency_contact_2_name: profileData.emergency_contact_2_name ?? null,
                     emergency_contact_2_phone: profileData.emergency_contact_2_phone ?? null,
-                } as never);
+                    updated_at: new Date().toISOString(),
+                } as any)
+                .select();
 
             if (profileError) {
-                console.error('Error creating profile:', profileError);
-                return { error: new Error(profileError.message) };
+                console.error('CRITICAL: Error creating profile in database:', profileError);
+                // We return null error even if profile fails because auth Succeeded, 
+                // but we log it so we know why the DB isn't updating.
+                // The user can always update their profile later in Account settings.
+                return { error: new Error(`Auth succeeded but profile creation failed: ${profileError.message}`) };
             }
+
+            // Immediately fetch the new profile to update state
+            const newProfile = await fetchProfile(data.user.id);
+            if (newProfile) setProfile(newProfile);
         }
 
         return { error: null };
@@ -132,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
     };
 
-    // Update profile
+    // Update profile (uses upsert to handle cases where row might be missing)
     const updateProfile = async (updates: Partial<Profile>): Promise<{ error: Error | null }> => {
         if (!user) {
             return { error: new Error('No user logged in') };
@@ -140,13 +156,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const { error } = await supabase
             .from('profiles')
-            .update({
+            .upsert({
+                id: user.id,
                 ...updates,
                 updated_at: new Date().toISOString(),
-            } as never)
-            .eq('id', user.id);
+            } as any);
 
         if (error) {
+            console.error('Error updating profile:', error);
             return { error: new Error(error.message) };
         }
 
