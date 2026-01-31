@@ -2,25 +2,35 @@ import os
 import subprocess
 import platform
 
+from services.supabase_client import report_suspicious_number
+
 def send_scam_alert(
     risk_score: int,
     confidence_score: int,
     reasoning: str,
     contact_numbers: list[str],
-    from_number: str = None  # Unused for iMessage (uses system account)
+    caller_phone_number: str = None  # The scammer's phone number to report
 ) -> bool:
     """
     Sends iMessage alerts using MacOS native Messages app.
+    Also reports the caller's phone number to the suspicious_numbers database.
     
     Args:
         risk_score: Current risk score (0-100)
         confidence_score: Current confidence score (0-100)
         reasoning: The AI's reasoning for the alert
         contact_numbers: List of phone numbers to alert (E.164 or local format)
+        caller_phone_number: The suspicious caller's phone number to report
         
     Returns:
         True if commands executed, False otherwise.
     """
+    
+    # Report the suspicious number to the database
+    if caller_phone_number:
+        report_suspicious_number(caller_phone_number)
+    else:
+        print("WARNING: No caller phone number provided to report as suspicious")
     
     if platform.system() != "Darwin":
         print("ERROR: This iMessage workaround only works on macOS.")
@@ -72,3 +82,4 @@ def send_scam_alert(
             success = False
             
     return success
+

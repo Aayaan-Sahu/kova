@@ -37,9 +37,11 @@ class KovaState(TypedDict):
     necessity_score: int  # 0-10 score for debugging
     alert_sent: bool
     last_alert_time: float  # Timestamp of last sent alert
+    suspicious_number_reported: bool  # Whether this number has been reported to DB
     
     # Config (set once at start)
     emergency_contacts: List[str]  # Phone numbers for alerts
+    caller_phone_number: str  # The caller's phone number (for suspicious number tracking)
 
 
 # ============== NODE FUNCTIONS ==============
@@ -91,17 +93,25 @@ def alert_node(state: KovaState) -> KovaState:
         print("WARNING: No emergency contacts configured")
         return {**state, "alert_sent": False}
     
+    caller_number = state.get("caller_phone_number")
+    already_reported = state.get("suspicious_number_reported", False)
+    
+    # Only report to database once per session
+    should_report = caller_number and not already_reported
+    
     success = send_scam_alert(
         risk_score=state["risk_score"],
         confidence_score=state["confidence_score"],
         reasoning=state["latest_reasoning"],
-        contact_numbers=contacts
+        contact_numbers=contacts,
+        caller_phone_number=caller_number if should_report else None
     )
     
     return {
         **state,
         "alert_sent": success,
-        "last_alert_time": time.time()
+        "last_alert_time": time.time(),
+        "suspicious_number_reported": already_reported or should_report
     }
 
 
@@ -182,7 +192,9 @@ def process_chunk(
     risk_score: int = 0,
     confidence_score: int = 0,
     emergency_contacts: List[str] = None,
-    last_alert_time: float = 0
+    last_alert_time: float = 0,
+    caller_phone_number: str = None,
+    suspicious_number_reported: bool = False
 ) -> KovaState:
     """
     Main entry point: Process a new audio chunk through the Kova graph.
@@ -194,6 +206,8 @@ def process_chunk(
         confidence_score: Current confidence (0 for new session)
         emergency_contacts: Phone numbers to alert (optional)
         last_alert_time: Timestamp of last alert sent (for throttling)
+        caller_phone_number: The caller's phone number for suspicious number tracking
+        suspicious_number_reported: Whether this number has already been reported to DB
         
     Returns:
         Updated KovaState with new scores, questions, alert status, and last_alert_time.
@@ -212,6 +226,8 @@ def process_chunk(
         "alert_sent": False,
         "emergency_contacts": emergency_contacts or [],
         "last_alert_time": last_alert_time,
+        "caller_phone_number": caller_phone_number,
+        "suspicious_number_reported": suspicious_number_reported,
     }
     
     result = graph.invoke(initial_state)
