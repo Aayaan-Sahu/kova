@@ -3,14 +3,31 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Shield, Settings, LogOut, BarChart3, User, ChevronDown } from 'lucide-react';
 import { cn } from '../utils/cn';
+import { useAuth } from '../contexts/AuthContext';
 
 export const Dashboard = () => {
     const navigate = useNavigate();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const { profile, signOut } = useAuth();
 
     const handleStartProtection = () => {
         navigate('/active');
     };
+
+    const handleSignOut = async () => {
+        await signOut();
+        navigate('/login');
+    };
+
+    // Get display name and initials from profile
+    const displayName = profile?.full_name || 'User';
+    const initials = displayName
+        .split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+    const phoneNumber = profile?.phone_number || 'Not set';
 
     return (
         <div className="min-h-screen bg-neutral-950 p-6 md:p-12" onClick={() => setIsMenuOpen(false)}>
@@ -23,7 +40,7 @@ export const Dashboard = () => {
                             <Shield className="w-6 h-6 text-brand-500" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold text-white">Welcome back, John</h1>
+                            <h1 className="text-2xl font-bold text-white">Welcome back, {displayName.split(' ')[0]}</h1>
                             <p className="text-neutral-400 text-sm">System Status: <span className="text-brand-400 font-medium">Active</span></p>
                         </div>
                     </div>
@@ -54,10 +71,13 @@ export const Dashboard = () => {
                                     Account
                                 </Link>
                                 <div className="h-px bg-neutral-800 my-1" />
-                                <Link to="/login" className="flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors">
+                                <button
+                                    onClick={handleSignOut}
+                                    className="flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
+                                >
                                     <LogOut className="w-4 h-4" />
                                     Sign Out
-                                </Link>
+                                </button>
                             </div>
                         )}
                     </div>
@@ -127,11 +147,11 @@ export const Dashboard = () => {
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-neutral-700 to-neutral-800 flex items-center justify-center text-white font-bold text-lg">
-                                    JD
+                                    {initials}
                                 </div>
                                 <div>
-                                    <p className="text-white font-medium">John Doe</p>
-                                    <p className="text-xs text-neutral-500">+1 (555) 123-4567</p>
+                                    <p className="text-white font-medium">{displayName}</p>
+                                    <p className="text-xs text-neutral-500">{phoneNumber}</p>
                                 </div>
                             </div>
                         </div>
