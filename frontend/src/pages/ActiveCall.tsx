@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { AudioVisualizer } from '../components/AudioVisualizer';
@@ -12,82 +12,8 @@ export const ActiveCall = () => {
     const [transcript, setTranscript] = useState<string[]>([]);
     const [status, setStatus] = useState<'safe' | 'warning' | 'danger'>('safe');
     const [isSimulationMode, setIsSimulationMode] = useState(false);
-    const [audioLevels, setAudioLevels] = useState<number[]>([0.2, 0.4, 0.6, 0.4, 0.2]);
-    const audioContextRef = useRef<AudioContext | null>(null);
-    const analyserRef = useRef<AnalyserNode | null>(null);
-    const dataArrayRef = useRef<Uint8Array | null>(null);
-    const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-
-    // Microphone Capture
-    useEffect(() => {
-        const startMicrophone = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-                const ctx = new AudioContext();
-                audioContextRef.current = ctx;
-
-                const analyser = ctx.createAnalyser();
-                analyser.fftSize = 64; // Small FFT for few bars
-                analyserRef.current = analyser;
-
-                const source = ctx.createMediaStreamSource(stream);
-                sourceRef.current = source;
-                source.connect(analyser);
-
-                const bufferLength = analyser.frequencyBinCount;
-                dataArrayRef.current = new Uint8Array(bufferLength) as any;
-
-                const updateLevels = () => {
-                    if (!analyserRef.current || !dataArrayRef.current) return;
-                    analyserRef.current.getByteFrequencyData(dataArrayRef.current as any);
-
-                    // Complex Organic Wave Logic
-                    // We want a dominant center that ripples outwards asymmetrically.
-
-                    // 1. Capture aggregate energy (Volume) to drive the total pulsing
-                    let sum = 0;
-                    const binCount = bufferLength; // 64
-                    for (let i = 0; i < binCount; i++) {
-                        sum += dataArrayRef.current[i];
-                    }
-                    const avgVolume = sum / binCount;
-                    // Reverted base sensitivity to normal (divisor 100) per request
-                    const energy = Math.min(1, Math.max(0.1, avgVolume / 100));
-
-                    // 2. Generate Symmetric Levels
-                    // Center (Bar 2) is dominant.
-                    // Mirrors: Bar 0<>4, Bar 1<>3
-
-                    // Add some random organic noise so it's not perfectly static scaling
-                    const noise = () => Math.random() * 0.1 - 0.05;
-
-                    const symmetricLevels = [
-                        energy * 1.8 + noise(),  // Left Outer (Bar 0) - Heavily Boosted
-                        energy * 0.9 + noise(),  // Left Inner (Bar 1) - Normal
-                        energy * 1.0,            // Center (Bar 2) - Dominant
-                        energy * 0.9 + noise(),  // Right Inner (Bar 3) - Mirrored Normal
-                        energy * 1.8 + noise()   // Right Outer (Bar 4) - Mirrored Boosted
-                    ];
-
-                    setAudioLevels(symmetricLevels);
-                    requestAnimationFrame(updateLevels);
-                };
-
-                updateLevels();
-
-            } catch (err) {
-                console.error("Error accessing microphone:", err);
-            }
-        };
-
-        startMicrophone();
-
-        return () => {
-            sourceRef.current?.disconnect();
-            audioContextRef.current?.close();
-        };
-    }, []);
+    // Audio Context moved to Visualizer Component
+    // No explicit audio logic here anymore
 
     // Startup sound effect
     useEffect(() => {
@@ -187,17 +113,13 @@ export const ActiveCall = () => {
         <div className="relative min-h-screen bg-black overflow-hidden flex flex-col items-center justify-between p-6">
 
             {/* --- FLUID LUMINOUS HALO SYSTEM --- */}
-            {/* Base Halo Glow (Outer Bleed) */}
+            {/* Base Halo Glow (Outer Bleed) - STABILIZED (No pulsing opacity/scale) */}
             <motion.div
                 className={cn(
                     "absolute inset-0 z-0 opacity-40 blur-[100px] transition-colors duration-1000",
                     mesh.glow
                 )}
-                animate={{
-                    scale: [1, 1.1, 1],
-                    opacity: status === 'danger' ? [0.4, 0.6, 0.4] : 0.4
-                }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+            // Removed animate property to stop "phasing in and out"
             />
 
             {/* Rotating Mesh Gradient Border */}
@@ -263,9 +185,7 @@ export const ActiveCall = () => {
                         {/* AudioVisualizer with real mic data */}
                         <AudioVisualizer
                             isActive={true}
-                            levels={isSimulationMode ? undefined : audioLevels} // Use simulation if mode active
-                            intensity={isSimulationMode ? 0.8 : 0.3}
-                            className="scale-150 relative z-10"
+                            className="relative z-10"
                         />
                     </div>
 

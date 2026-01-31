@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { User, Phone, Users, ArrowRight } from 'lucide-react';
+import { User, Phone, Users, ArrowRight, Mail } from 'lucide-react';
 
 export const Signup = () => {
     const [isLoading, setIsLoading] = useState(false);
@@ -45,7 +45,20 @@ export const Signup = () => {
                         />
                     </div>
                     <Input
+                        label="Email Address"
+                        type="email"
+                        placeholder="john@example.com"
+                        icon={<Mail className="w-4 h-4" />}
+                        required
+                    />
+                    <Input
                         label="Password"
+                        type="password"
+                        placeholder="••••••••"
+                        required
+                    />
+                    <Input
+                        label="Confirm Password"
                         type="password"
                         placeholder="••••••••"
                         required
