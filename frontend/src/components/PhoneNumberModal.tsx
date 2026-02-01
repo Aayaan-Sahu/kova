@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from './ui/Button';
-import { Phone, X } from 'lucide-react';
+import { Phone, X, AlertTriangle } from 'lucide-react';
 import { cn } from '../utils/cn';
 
 interface PhoneNumberModalProps {
@@ -9,17 +9,23 @@ interface PhoneNumberModalProps {
     onSubmit: (phoneNumber: string) => void;
 }
 
+interface SuspiciousCheck {
+    found: boolean;
+    report_count?: number;
+}
+
 export const PhoneNumberModal = ({ isOpen, onClose, onSubmit }: PhoneNumberModalProps) => {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [error, setError] = useState('');
+    const [isChecking, setIsChecking] = useState(false);
+    const [suspiciousWarning, setSuspiciousWarning] = useState<SuspiciousCheck | null>(null);
 
-    // Basic phone validation - accepts formats like +1234567890, (123) 456-7890, etc.
     const isValidPhone = (phone: string): boolean => {
         const cleaned = phone.replace(/[\s\-\(\)\.]/g, '');
         return cleaned.length >= 10 && /^\+?\d+$/.test(cleaned);
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!phoneNumber.trim()) {
             setError('Please enter a phone number');
             return;
@@ -29,6 +35,25 @@ export const PhoneNumberModal = ({ isOpen, onClose, onSubmit }: PhoneNumberModal
             return;
         }
         setError('');
+
+        // If we haven't checked yet, check the number first
+        if (suspiciousWarning === null) {
+            setIsChecking(true);
+            try {
+                const response = await fetch(`http://localhost:8000/api/check-number?phone=${encodeURIComponent(phoneNumber.trim())}`);
+                const data: SuspiciousCheck = await response.json();
+
+                if (data.found) {
+                    setSuspiciousWarning(data);
+                    setIsChecking(false);
+                    return;
+                }
+            } catch (e) {
+                console.error('Error checking number:', e);
+            }
+            setIsChecking(false);
+        }
+
         onSubmit(phoneNumber.trim());
     };
 
@@ -36,6 +61,12 @@ export const PhoneNumberModal = ({ isOpen, onClose, onSubmit }: PhoneNumberModal
         if (e.key === 'Enter' && isValidPhone(phoneNumber)) {
             handleSubmit();
         }
+    };
+
+    const handlePhoneChange = (value: string) => {
+        setPhoneNumber(value);
+        setError('');
+        setSuspiciousWarning(null); // Reset warning when number changes
     };
 
     if (!isOpen) return null;
@@ -69,16 +100,31 @@ export const PhoneNumberModal = ({ isOpen, onClose, onSubmit }: PhoneNumberModal
                     </div>
                 </div>
 
+                {/* Suspicious Number Warning */}
+                {suspiciousWarning?.found && (
+                    <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                        <div className="flex items-start gap-3">
+                            <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-red-400 font-semibold">Warning: Suspicious Number</p>
+                                <p className="text-red-300 text-sm mt-1">
+                                    This number has been reported <span className="font-bold">{suspiciousWarning.report_count} time{suspiciousWarning.report_count !== 1 ? 's' : ''}</span> by other users.
+                                </p>
+                                <p className="text-neutral-400 text-xs mt-2">
+                                    You can still proceed, but please be extra cautious.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Input */}
                 <div className="space-y-4">
                     <div>
                         <input
                             type="tel"
                             value={phoneNumber}
-                            onChange={(e) => {
-                                setPhoneNumber(e.target.value);
-                                setError('');
-                            }}
+                            onChange={(e) => handlePhoneChange(e.target.value)}
                             onKeyDown={handleKeyDown}
                             placeholder="+1 (555) 123-4567"
                             className={cn(
@@ -107,9 +153,10 @@ export const PhoneNumberModal = ({ isOpen, onClose, onSubmit }: PhoneNumberModal
                         <Button
                             className="flex-1"
                             onClick={handleSubmit}
-                            disabled={!phoneNumber.trim()}
+                            disabled={!phoneNumber.trim() || isChecking}
+                            isLoading={isChecking}
                         >
-                            Start Protection
+                            {suspiciousWarning?.found ? 'Proceed Anyway' : 'Start Protection'}
                         </Button>
                     </div>
                 </div>

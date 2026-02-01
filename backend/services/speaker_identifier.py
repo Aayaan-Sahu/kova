@@ -5,9 +5,6 @@ from openai import AsyncOpenAI
 
 load_dotenv()
 
-# Initialize Groq client
-groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
-
 ai_client = None
 def get_ai_client():
     global ai_client
