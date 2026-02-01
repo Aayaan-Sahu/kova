@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers.websocket import router as websocket_router
 from routers.chat import router as chat_router
 from routers.api import router as api_router
+from routers.wakeword import router as wakeword_router
 
 app = FastAPI(
     title="Kova API",
@@ -23,6 +24,7 @@ app.add_middleware(
 app.include_router(websocket_router)
 app.include_router(chat_router)
 app.include_router(api_router)
+app.include_router(wakeword_router)
 
 
 if __name__ == "__main__":

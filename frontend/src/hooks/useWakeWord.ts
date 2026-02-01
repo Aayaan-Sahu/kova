@@ -1,49 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-// TypeScript declarations for Web Speech API
-interface SpeechRecognitionEvent extends Event {
-    results: SpeechRecognitionResultList;
-    resultIndex: number;
-}
-
-interface SpeechRecognitionResultList {
-    length: number;
-    item(index: number): SpeechRecognitionResult;
-    [index: number]: SpeechRecognitionResult;
-}
-
-interface SpeechRecognitionResult {
-    length: number;
-    item(index: number): SpeechRecognitionAlternative;
-    [index: number]: SpeechRecognitionAlternative;
-    isFinal: boolean;
-}
-
-interface SpeechRecognitionAlternative {
-    transcript: string;
-    confidence: number;
-}
-
-interface SpeechRecognition extends EventTarget {
-    continuous: boolean;
-    interimResults: boolean;
-    lang: string;
-    start(): void;
-    stop(): void;
-    abort(): void;
-    onresult: ((event: SpeechRecognitionEvent) => void) | null;
-    onend: (() => void) | null;
-    onerror: ((event: Event & { error: string }) => void) | null;
-    onstart: (() => void) | null;
-}
-
-declare global {
-    interface Window {
-        SpeechRecognition: new () => SpeechRecognition;
-        webkitSpeechRecognition: new () => SpeechRecognition;
-    }
-}
-
 interface UseWakeWordOptions {
     wakeWord?: string;
     onWakeWord: () => void;
@@ -65,150 +21,155 @@ export const useWakeWord = ({
     enabled = true,
 }: UseWakeWordOptions): UseWakeWordReturn => {
     const [isListening, setIsListening] = useState(false);
-    const [isSupported, setIsSupported] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const recognitionRef = useRef<SpeechRecognition | null>(null);
-    const shouldBeListeningRef = useRef(false); // Track intended state
-    const restartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const socketRef = useRef<WebSocket | null>(null);
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const processorRef = useRef<ScriptProcessorNode | null>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+    const shouldBeListeningRef = useRef(false);
     const onWakeWordRef = useRef(onWakeWord);
-    const retryCountRef = useRef(0);
-    const maxRetries = 5;
-    const baseRetryDelay = 1000; // Start with 1 second delay
+    const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Keep callback ref updated
     useEffect(() => {
         onWakeWordRef.current = onWakeWord;
     }, [onWakeWord]);
 
-    // Cleanup function
     const cleanup = useCallback(() => {
-        if (restartTimeoutRef.current) {
-            clearTimeout(restartTimeoutRef.current);
-            restartTimeoutRef.current = null;
+        if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+        }
+
+        if (processorRef.current) {
+            processorRef.current.disconnect();
+            processorRef.current = null;
+        }
+
+        if (audioContextRef.current) {
+            audioContextRef.current.close();
+            audioContextRef.current = null;
+        }
+
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+
+        if (socketRef.current) {
+            socketRef.current.close();
+            socketRef.current = null;
         }
     }, []);
 
-    // Initialize speech recognition
-    useEffect(() => {
-        const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-        if (!SpeechRecognitionAPI) {
-            setIsSupported(false);
-            setError('Speech recognition is not supported in this browser');
-            return;
+    const startListening = useCallback(async () => {
+        if (!shouldBeListeningRef.current) {
+            shouldBeListeningRef.current = true;
         }
 
-        const recognition = new SpeechRecognitionAPI();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
-
-        recognition.onresult = (event: SpeechRecognitionEvent) => {
-            // Check all results for the wake word
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                const transcript = event.results[i][0].transcript.toLowerCase().trim();
-                console.log('[WakeWord] Heard:', transcript);
-
-                if (transcript.includes(wakeWord.toLowerCase())) {
-                    console.log('[WakeWord] Wake word detected!');
-                    // Stop listening before triggering callback to prevent multiple triggers
-                    shouldBeListeningRef.current = false;
-                    cleanup();
-                    recognition.stop();
-                    setIsListening(false);
-                    onWakeWordRef.current();
-                    return;
+        try {
+            // Get microphone access
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
                 }
-            }
-        };
+            });
+            streamRef.current = stream;
 
-        recognition.onend = () => {
-            console.log('[WakeWord] Recognition ended');
-            setIsListening(false);
+            // Set up audio context
+            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+            const audioContext = new AudioContextClass();
+            audioContextRef.current = audioContext;
+            await audioContext.resume();
 
-            // Only restart if we should still be listening
-            if (shouldBeListeningRef.current && retryCountRef.current < maxRetries) {
-                const delay = baseRetryDelay * Math.pow(1.5, retryCountRef.current); // Exponential backoff
-                console.log(`[WakeWord] Scheduling restart in ${delay}ms (attempt ${retryCountRef.current + 1}/${maxRetries})`);
+            // Connect to backend WebSocket
+            const wsUrl = `ws://localhost:8000/ws/wakeword?sample_rate=${audioContext.sampleRate}&wake_word=${encodeURIComponent(wakeWord)}`;
+            const socket = new WebSocket(wsUrl);
+            socketRef.current = socket;
 
-                cleanup();
-                restartTimeoutRef.current = setTimeout(() => {
-                    if (shouldBeListeningRef.current) {
-                        try {
-                            recognition.start();
-                            retryCountRef.current++;
-                        } catch (e) {
-                            console.error('[WakeWord] Failed to restart:', e);
+            socket.onopen = () => {
+                console.log('[WakeWord] Connected to backend');
+                setIsListening(true);
+                setError(null);
+
+                // Set up audio processing
+                const source = audioContext.createMediaStreamSource(stream);
+                const processor = audioContext.createScriptProcessor(4096, 1, 1);
+                processorRef.current = processor;
+
+                processor.onaudioprocess = (e) => {
+                    if (socket.readyState === WebSocket.OPEN) {
+                        const inputData = e.inputBuffer.getChannelData(0);
+                        const int16Data = new Int16Array(inputData.length);
+                        for (let i = 0; i < inputData.length; i++) {
+                            const s = Math.max(-1, Math.min(1, inputData[i]));
+                            int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
                         }
+                        socket.send(int16Data.buffer);
                     }
-                }, delay);
-            } else if (retryCountRef.current >= maxRetries) {
-                console.log('[WakeWord] Max retries reached, stopping');
-                shouldBeListeningRef.current = false;
-                setError('Speech recognition failed after multiple attempts. Click to retry.');
-            }
-        };
+                };
 
-        recognition.onerror = (event) => {
-            console.error('[WakeWord] Error:', event.error);
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+            };
 
-            if (event.error === 'not-allowed') {
-                setError('Microphone permission denied');
-                shouldBeListeningRef.current = false;
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('[WakeWord] Message:', data);
+
+                    if (data.detected) {
+                        console.log('[WakeWord] Wake word detected!');
+                        shouldBeListeningRef.current = false;
+                        cleanup();
+                        setIsListening(false);
+                        onWakeWordRef.current();
+                    }
+                } catch (e) {
+                    console.error('[WakeWord] Parse error:', e);
+                }
+            };
+
+            socket.onclose = () => {
+                console.log('[WakeWord] Connection closed');
                 setIsListening(false);
-            } else if (event.error === 'network') {
-                // Network errors are common and recoverable - don't show error to user
-                // The onend handler will retry automatically
-                console.log('[WakeWord] Network error, will retry...');
-            } else if (event.error !== 'aborted' && event.error !== 'no-speech') {
-                console.log('[WakeWord] Non-fatal error:', event.error);
+
+                // Reconnect if we should still be listening
+                if (shouldBeListeningRef.current) {
+                    console.log('[WakeWord] Scheduling reconnect...');
+                    cleanup();
+                    reconnectTimeoutRef.current = setTimeout(() => {
+                        if (shouldBeListeningRef.current) {
+                            startListening();
+                        }
+                    }, 2000);
+                }
+            };
+
+            socket.onerror = (e) => {
+                console.error('[WakeWord] WebSocket error:', e);
+                setError('Connection error - retrying...');
+            };
+
+        } catch (e) {
+            console.error('[WakeWord] Error:', e);
+            if ((e as Error).name === 'NotAllowedError') {
+                setError('Microphone permission denied');
+            } else {
+                setError('Failed to start listening');
             }
-        };
-
-        recognition.onstart = () => {
-            console.log('[WakeWord] Recognition started');
-            setIsListening(true);
-            setError(null);
-            retryCountRef.current = 0; // Reset retry count on successful start
-        };
-
-        recognitionRef.current = recognition;
-
-        return () => {
-            shouldBeListeningRef.current = false;
-            cleanup();
-            recognition.abort();
-        };
+            setIsListening(false);
+        }
     }, [wakeWord, cleanup]);
 
-    const startListening = useCallback(() => {
-        if (!recognitionRef.current || !isSupported) return;
-
-        shouldBeListeningRef.current = true;
-        retryCountRef.current = 0;
-        setError(null);
-
-        try {
-            recognitionRef.current.start();
-        } catch (e) {
-            // Already started or other error
-            console.log('[WakeWord] Start error (may already be running):', e);
-        }
-    }, [isSupported]);
-
     const stopListening = useCallback(() => {
-        if (!recognitionRef.current) return;
-
         shouldBeListeningRef.current = false;
         cleanup();
-
-        try {
-            recognitionRef.current.stop();
-        } catch (e) {
-            console.log('[WakeWord] Stop error:', e);
-        }
         setIsListening(false);
+        setError(null);
     }, [cleanup]);
 
     const toggleListening = useCallback(() => {
@@ -219,9 +180,9 @@ export const useWakeWord = ({
         }
     }, [startListening, stopListening]);
 
-    // Auto-start when enabled changes
+    // Auto-start when enabled
     useEffect(() => {
-        if (enabled && isSupported) {
+        if (enabled) {
             startListening();
         } else {
             stopListening();
@@ -230,11 +191,11 @@ export const useWakeWord = ({
         return () => {
             cleanup();
         };
-    }, [enabled, isSupported, startListening, stopListening, cleanup]);
+    }, [enabled]);
 
     return {
         isListening,
-        isSupported,
+        isSupported: true, // WebSocket is always supported
         error,
         startListening,
         stopListening,

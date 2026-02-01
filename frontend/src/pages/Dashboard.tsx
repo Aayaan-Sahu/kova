@@ -22,7 +22,7 @@ export const Dashboard = () => {
 
     // Wake word listener
     const { isListening: isWakeWordListening, isSupported: isWakeWordSupported, toggleListening } = useWakeWord({
-        wakeWord: 'hello',
+        wakeWord: 'kova activate',
         onWakeWord: handleWakeWordDetected,
         enabled: wakeWordEnabled,
     });
@@ -205,7 +205,7 @@ export const Dashboard = () => {
                             ? "bg-brand-500/20 border-brand-500/50 hover:bg-brand-500/30 shadow-brand-500/30"
                             : "bg-neutral-800/80 border-neutral-700 hover:bg-neutral-700/80 opacity-60 hover:opacity-100"
                     )}
-                    title={isWakeWordListening ? 'Voice activation ON - Say "hello" to start' : 'Voice activation OFF - Click to enable'}
+                    title={isWakeWordListening ? 'Voice activation ON - Say "kova activate" to start' : 'Voice activation OFF - Click to enable'}
                 >
                     {isWakeWordListening ? (
                         <Mic className="w-6 h-6 text-brand-400 animate-pulse" />
@@ -221,7 +221,7 @@ export const Dashboard = () => {
                             ? "bg-brand-500/20 text-brand-300 border border-brand-500/30"
                             : "bg-neutral-800 text-neutral-400 border border-neutral-700"
                     )}>
-                        {isWakeWordListening ? 'Say "hello" to activate' : 'Click to enable voice activation'}
+                        {isWakeWordListening ? 'Say "kova activate"' : 'Click to enable voice activation'}
                     </span>
                 </button>
             )}
