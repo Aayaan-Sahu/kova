@@ -19,6 +19,13 @@ class SessionState:
         
         # For the frontend
         self.latest_reasoning: str = ""
+        
+        # Workflow state (used by chat.py for process_chunk)
+        self.emergency_contacts: List[str] = []
+        self.last_alert_time: float = 0
+        self.last_question_time: float = 0
+        self.caller_phone_number: str = None
+        self.suspicious_number_reported: bool = False
     
     def add_turn(self, speaker: str, text: str):
         """Adds a turn to the history efficiently."""
