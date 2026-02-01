@@ -21,4 +21,6 @@ dependencies = [
     "twilio>=9.10.0",
     "uvicorn>=0.40.0",
     "supabase>=2.0.0",
+    "websockets>=15.0.1",
+    "sounddevice>=0.5.5",
 ]

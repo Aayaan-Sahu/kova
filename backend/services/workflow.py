@@ -37,6 +37,7 @@ class KovaState(TypedDict):
     necessity_score: int  # 0-10 score for debugging
     alert_sent: bool
     last_alert_time: float  # Timestamp of last sent alert
+    last_question_time: float # Timestamp of last generated question
     suspicious_number_reported: bool  # Whether this number has been reported to DB
     
     # Config (set once at start)
@@ -76,12 +77,30 @@ def question_generator_node(state: KovaState) -> KovaState:
     session.risk_score = state["risk_score"]
     session.confidence_score = state["confidence_score"]
     
+    session.confidence_score = state["confidence_score"]
+    
+    # Rate limit: Don't generate if less than 3 seconds since last question
+    last_time = state.get("last_question_time", 0)
+    current_time = time.time()
+    
+    if (current_time - last_time) < 3.0:
+        return {
+            **state,
+            "suggested_question": None,
+            "necessity_score": 0,
+            # last_question_time remains unchanged
+        }
+
     question, score = generate_question(session)
+    
+    # Only update timestamp if we actually generated a question
+    new_last_time = current_time if question else last_time
     
     return {
         **state,
         "suggested_question": question,  # May be None if no question needed
         "necessity_score": score,
+        "last_question_time": new_last_time,
     }
 
 
@@ -193,6 +212,7 @@ def process_chunk(
     confidence_score: int = 0,
     emergency_contacts: List[str] = None,
     last_alert_time: float = 0,
+    last_question_time: float = 0,
     caller_phone_number: str = None,
     suspicious_number_reported: bool = False
 ) -> KovaState:
@@ -226,6 +246,7 @@ def process_chunk(
         "alert_sent": False,
         "emergency_contacts": emergency_contacts or [],
         "last_alert_time": last_alert_time,
+        "last_question_time": last_question_time,
         "caller_phone_number": caller_phone_number,
         "suspicious_number_reported": suspicious_number_reported,
     }
