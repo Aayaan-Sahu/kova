@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { AudioVisualizer } from '../components/AudioVisualizer';
 import { cn } from '../utils/cn';
-import { ShieldAlert, ShieldCheck, ShieldQuestion, PhoneOff } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, ShieldQuestion, PhoneOff, X, MessageCircleQuestion } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface AudioDevice {
@@ -19,12 +19,21 @@ interface TranscriptSegment {
 interface TranscriptMessage {
     type: string;
     segments: TranscriptSegment[];
+    risk_score: number;
+    confidence_score: number;
+    reasoning: string;
+    suggested_question: string | null;
+    alert_sent: boolean;
 }
 
 export const ActiveCall = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const callerPhoneNumber = (location.state as { callerPhoneNumber?: string })?.callerPhoneNumber || '';
     const [riskScore, setRiskScore] = useState(0);
+    const [confidenceScore, setConfidenceScore] = useState(0);
     const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([]);
+    const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
     const [status, setStatus] = useState<'safe' | 'warning' | 'danger'>('safe');
     const [isListening, setIsListening] = useState(false);
     const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
@@ -134,7 +143,7 @@ export const ActiveCall = () => {
             const processor = audioContext.createScriptProcessor(4096, 1, 1);
             processorRef.current = processor;
 
-            const wsUrl = `ws://localhost:8000/ws/audio?sample_rate=${audioContext.sampleRate}`;
+            const wsUrl = `ws://localhost:8000/ws/audio?sample_rate=${audioContext.sampleRate}&caller_phone_number=${encodeURIComponent(callerPhoneNumber)}`;
             socketRef.current = new WebSocket(wsUrl);
 
             socketRef.current.onopen = () => {
@@ -166,8 +175,21 @@ export const ActiveCall = () => {
                     const message: TranscriptMessage = JSON.parse(event.data);
                     console.log('Received:', message);
 
-                    if (message.type === 'transcript' && message.segments.length > 0) {
-                        setTranscriptSegments(prev => [...prev, ...message.segments]);
+                    if (message.type === 'transcript') {
+                        if (message.segments.length > 0) {
+                            setTranscriptSegments(prev => [...prev, ...message.segments]);
+                        }
+                        setRiskScore(message.risk_score);
+                        setConfidenceScore(message.confidence_score);
+
+                        // Add new question if not duplicate
+                        if (message.suggested_question) {
+                            setSuggestedQuestions(prev => {
+                                if (prev.includes(message.suggested_question!)) return prev;
+                                const updated = [message.suggested_question!, ...prev];
+                                return updated.slice(0, 3); // Keep max 3
+                            });
+                        }
                     }
                 } catch (e) {
                     console.error('Error parsing message:', e);
@@ -215,6 +237,12 @@ export const ActiveCall = () => {
     const clearTranscript = () => {
         setTranscriptSegments([]);
         setRiskScore(0);
+        setConfidenceScore(0);
+        setSuggestedQuestions([]);
+    };
+
+    const dismissQuestion = (question: string) => {
+        setSuggestedQuestions(prev => prev.filter(q => q !== question));
     };
 
     // Mesh Gradient Colors
@@ -344,48 +372,46 @@ export const ActiveCall = () => {
                         />
                     </div>
 
-                    {/* Live Transcript Stream with Speaker Labels */}
-                    <div className="w-full h-48 overflow-hidden relative mask-image-gradient">
-                        <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-transparent to-neutral-950 z-20 pointer-events-none" />
+                    {/* Status message when listening */}
+                    <div className="w-full text-center py-4">
+                        <p className="text-neutral-500 italic font-light text-sm">
+                            {isListening ? 'Listening for conversation...' : 'Press Start to begin listening...'}
+                        </p>
+                    </div>
 
-                        <div className="space-y-4 text-center px-4 relative z-10 overflow-y-auto max-h-full">
-                            <AnimatePresence mode="popLayout">
-                                {transcriptSegments.length === 0 && (
-                                    <motion.p
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        className="text-neutral-600 italic font-light"
-                                    >
-                                        {isListening ? 'Listening for conversation...' : 'Press Start to begin listening...'}
-                                    </motion.p>
-                                )}
-                                {transcriptSegments.slice(-5).map((segment, idx) => (
+                    {/* Suggested Questions */}
+                    <AnimatePresence>
+                        {suggestedQuestions.length > 0 && riskScore < 70 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="w-full space-y-2 mt-4"
+                            >
+                                <div className="flex items-center gap-2 text-purple-400 text-sm font-medium">
+                                    <MessageCircleQuestion className="w-4 h-4" />
+                                    <span>Ask to verify caller:</span>
+                                </div>
+                                {suggestedQuestions.map((question, idx) => (
                                     <motion.div
-                                        key={idx}
-                                        initial={{ opacity: 0, y: 30, filter: 'blur(10px)' }}
-                                        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                                        exit={{ opacity: 0, y: -20, filter: 'blur(5px)' }}
-                                        className="flex items-start gap-3 text-left"
+                                        key={question}
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: 20 }}
+                                        className="flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 rounded-lg px-4 py-3"
                                     >
-                                        <span className={cn(
-                                            "shrink-0 px-2 py-1 rounded text-xs font-bold uppercase",
-                                            segment.speaker === 'user'
-                                                ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                                                : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                                        )}>
-                                            {segment.speaker}
-                                        </span>
-                                        <span className={cn(
-                                            "text-lg font-medium leading-relaxed",
-                                            idx === transcriptSegments.slice(-5).length - 1 ? "text-white" : "text-neutral-400"
-                                        )}>
-                                            "{segment.text}"
-                                        </span>
+                                        <span className="flex-1 text-purple-200 text-sm">"{question}"</span>
+                                        <button
+                                            onClick={() => dismissQuestion(question)}
+                                            className="text-purple-400 hover:text-purple-200 transition-colors"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
                                     </motion.div>
                                 ))}
-                            </AnimatePresence>
-                        </div>
-                    </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
                 {/* Controls */}

@@ -2,10 +2,10 @@ export interface Profile {
     id: string;
     full_name: string | null;
     phone_number: string | null;
-    emergency_contact_1_name: string | null;
-    emergency_contact_1_phone: string | null;
-    emergency_contact_2_name: string | null;
-    emergency_contact_2_phone: string | null;
+    emergency_contact_one_name: string | null;
+    emergency_contact_one_number: string | null;
+    emergency_contact_two_name: string | null;
+    emergency_contact_two_number: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -27,20 +27,20 @@ export interface Database {
                     id: string;
                     full_name?: string | null;
                     phone_number?: string | null;
-                    emergency_contact_1_name?: string | null;
-                    emergency_contact_1_phone?: string | null;
-                    emergency_contact_2_name?: string | null;
-                    emergency_contact_2_phone?: string | null;
+                    emergency_contact_one_name?: string | null;
+                    emergency_contact_one_number?: string | null;
+                    emergency_contact_two_name?: string | null;
+                    emergency_contact_two_number?: string | null;
                     created_at?: string;
                     updated_at?: string;
                 };
                 Update: {
                     full_name?: string | null;
                     phone_number?: string | null;
-                    emergency_contact_1_name?: string | null;
-                    emergency_contact_1_phone?: string | null;
-                    emergency_contact_2_name?: string | null;
-                    emergency_contact_2_phone?: string | null;
+                    emergency_contact_one_name?: string | null;
+                    emergency_contact_one_number?: string | null;
+                    emergency_contact_two_name?: string | null;
+                    emergency_contact_two_number?: string | null;
                     updated_at?: string;
                 };
                 Relationships: [];

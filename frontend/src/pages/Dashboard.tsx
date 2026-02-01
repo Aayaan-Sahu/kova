@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
+import { PhoneNumberModal } from '../components/PhoneNumberModal';
 import { Shield, Settings, LogOut, BarChart3, User, ChevronDown } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,10 +9,16 @@ import { useAuth } from '../contexts/AuthContext';
 export const Dashboard = () => {
     const navigate = useNavigate();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [showPhoneModal, setShowPhoneModal] = useState(false);
     const { profile, signOut } = useAuth();
 
     const handleStartProtection = () => {
-        navigate('/active');
+        setShowPhoneModal(true);
+    };
+
+    const handlePhoneSubmit = (phoneNumber: string) => {
+        setShowPhoneModal(false);
+        navigate('/active', { state: { callerPhoneNumber: phoneNumber } });
     };
 
     const handleSignOut = async () => {
@@ -159,6 +166,13 @@ export const Dashboard = () => {
 
                 </div>
             </div>
+
+            {/* Phone Number Modal */}
+            <PhoneNumberModal
+                isOpen={showPhoneModal}
+                onClose={() => setShowPhoneModal(false)}
+                onSubmit={handlePhoneSubmit}
+            />
         </div>
     );
 };

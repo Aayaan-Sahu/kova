@@ -17,12 +17,13 @@ router = APIRouter()
 async def audio_websocket(
     websocket: WebSocket,
     sample_rate: int = Query(default=48000),
+    caller_phone_number: str = Query(default=None),
 ):
     """
     WebSocket endpoint for real-time audio transcription and scam detection.
     """
     await websocket.accept()
-    print(f"[WS] Client connected (sample_rate={sample_rate})")
+    print(f"[WS] Client connected (sample_rate={sample_rate}, caller={caller_phone_number})")
     
     processor = TranscriptProcessor()
     
@@ -33,6 +34,8 @@ async def audio_websocket(
         "confidence_score": 0,
         "last_alert_time": 0,
         "emergency_contacts": ["+16692940189"],  # Replace with real number
+        "caller_phone_number": caller_phone_number,
+        "suspicious_number_reported": False,
     }
 
     try:
@@ -70,12 +73,15 @@ async def audio_websocket(
                                         confidence_score=session["confidence_score"],
                                         emergency_contacts=session["emergency_contacts"],
                                         last_alert_time=session["last_alert_time"],
+                                        caller_phone_number=session.get("caller_phone_number"),
+                                        suspicious_number_reported=session.get("suspicious_number_reported", False),
                                     )
                                     # Update history from result (process_chunk appends chunk internally)
                                     session["transcript_history"] = result["transcript_history"]
                                     session["risk_score"] = result["risk_score"]
                                     session["confidence_score"] = result["confidence_score"]
                                     session["last_alert_time"] = result["last_alert_time"]
+                                    session["suspicious_number_reported"] = result.get("suspicious_number_reported", False)
                                 
                                 print(f"[SCAM] Risk: {session['risk_score']} | Conf: {session['confidence_score']}")
                                 if result and result.get("suggested_question"):

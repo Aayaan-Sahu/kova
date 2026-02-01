@@ -1,18 +1,20 @@
+from openai import AsyncOpenAI
 import os
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
 load_dotenv()
 
-# Global variable, initialized lazily
-ai_client = None
+# Initialize Groq client
+groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 
+ai_client = None
 def get_ai_client():
     global ai_client
     if ai_client is None:
         ai_client = AsyncOpenAI(
             base_url="https://api.keywordsai.co/api",
-            api_key=os.getenv("KEYWORDS_AI_API_KEY")
+            api_key=os.getenv("KEYWORDS_API_KEY"),
         )
     return ai_client
 
