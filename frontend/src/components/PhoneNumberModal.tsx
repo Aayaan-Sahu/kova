@@ -80,7 +80,7 @@ export const PhoneNumberModal = ({ isOpen, onClose, onSubmit }: PhoneNumberModal
             />
 
             {/* Modal */}
-            <div className="relative z-10 w-full max-w-md mx-4 bg-neutral-900 border border-neutral-800 rounded-3xl p-8 shadow-2xl">
+            <div className="relative z-10 w-full max-w-md mx-4 bg-neutral-900 border border-neutral-800 rounded-3xl p-8 shadow-2xl animate-scale-in">
                 {/* Close button */}
                 <button
                     onClick={onClose}

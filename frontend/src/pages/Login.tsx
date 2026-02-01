@@ -30,7 +30,7 @@ export const Login = () => {
     };
 
     return (
-        <div className="bg-neutral-900/50 backdrop-blur-xl border border-neutral-800 p-8 rounded-2xl shadow-xl">
+        <div className="bg-neutral-900/50 backdrop-blur-xl border border-neutral-800 p-8 rounded-2xl shadow-xl animate-scale-in">
             <form onSubmit={handleSubmit} className="space-y-6">
                 {error && (
                     <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">

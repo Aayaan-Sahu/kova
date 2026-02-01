@@ -65,7 +65,7 @@ export const Signup = () => {
     };
 
     return (
-        <div className="bg-neutral-900/50 backdrop-blur-xl border border-neutral-800 p-8 rounded-2xl shadow-xl w-full max-w-lg mx-auto">
+        <div className="bg-neutral-900/50 backdrop-blur-xl border border-neutral-800 p-8 rounded-2xl shadow-xl w-full max-w-lg mx-auto animate-scale-in">
             <div className="mb-6">
                 <h2 className="text-xl font-semibold text-white">Create Account</h2>
                 <p className="text-neutral-400 text-sm">Set up protection for yourself or a loved one</p>

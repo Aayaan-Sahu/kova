@@ -61,7 +61,7 @@ export const Dashboard = () => {
             <div className="max-w-4xl mx-auto space-y-12">
 
                 {/* Header */}
-                <div className="flex items-center justify-between relative">
+                <div className="flex items-center justify-between relative z-10 animate-fade-in">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-brand-500/10 rounded-lg ring-1 ring-brand-500/20">
                             <Shield className="w-6 h-6 text-brand-500" />
@@ -110,7 +110,7 @@ export const Dashboard = () => {
                 {/* Main Action Area */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Start Protection Card */}
-                    <div className="md:col-span-2 relative group overflow-hidden rounded-3xl bg-neutral-900 border border-neutral-800 p-8 shadow-2xl transition-all duration-300 hover:shadow-brand-500/10 hover:border-brand-500/30 flex flex-col justify-center min-h-[300px]">
+                    <div className="md:col-span-2 relative group overflow-hidden rounded-3xl bg-neutral-900 border border-neutral-800 p-8 shadow-2xl transition-all duration-300 hover:shadow-brand-500/10 hover:border-brand-500/30 flex flex-col justify-center min-h-[300px] animate-slide-up animate-delay-100">
                         <div className="absolute inset-0 bg-gradient-to-br from-brand-900/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                         <div className="relative z-10 space-y-8">
@@ -133,13 +133,13 @@ export const Dashboard = () => {
                         </div>
 
                         {/* Decorative Icon */}
-                        <Shield className="absolute -bottom-8 -right-8 w-64 h-64 text-neutral-800/30 rotate-12 group-hover:rotate-6 transition-transform duration-700" />
+                        <Shield className="absolute -bottom-8 -right-8 w-64 h-64 text-neutral-800/30 animate-float group-hover:rotate-6 transition-transform duration-700" />
                     </div>
 
                     {/* Sidebar / Quick Stats */}
                     <div className="space-y-6">
 
-                        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6">
+                        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 animate-slide-up animate-delay-200">
                             <div className="flex items-center gap-3 text-neutral-400 mb-4">
                                 <User className="w-5 h-5" />
                                 <span className="font-medium text-sm uppercase tracking-wider">Profile</span>
