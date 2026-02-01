@@ -3,6 +3,7 @@ WebSocket router for real-time audio transcription.
 """
 import json
 import asyncio
+import time
 from fastapi import APIRouter, WebSocket, Query
 from starlette.websockets import WebSocketDisconnect
 
@@ -11,6 +12,7 @@ from services.transcript_processor import TranscriptProcessor
 from services.workflow import process_chunk
 from services import session_manager
 from services.session_state import SessionState
+from services.supabase_client import update_call_analytics
 
 router = APIRouter()
 
@@ -21,12 +23,18 @@ async def audio_websocket(
     sample_rate: int = Query(default=48000),
     caller_phone_number: str = Query(default=None),
     session_id: str = Query(default=None),
+    user_id: str = Query(default=None),  # For analytics tracking
 ):
     """
     WebSocket endpoint for real-time audio transcription and scam detection.
     """
     await websocket.accept()
-    print(f"[WS] Client connected (sample_rate={sample_rate}, caller={caller_phone_number})")
+    print(f"[WS] Client connected (sample_rate={sample_rate}, caller={caller_phone_number}, user={user_id})")
+    
+    # Track call start time for analytics
+    call_start_time = time.time()
+    questions_generated_count = 0
+    alerts_sent_count = 0
     
     processor = TranscriptProcessor()
     
@@ -115,6 +123,7 @@ async def audio_websocket(
                                 print(f"[SCAM] Risk: {session['risk_score']} | Conf: {session['confidence_score']}")
                                 if result and result.get("suggested_question"):
                                     print(f"[SCAM] Suggested Question: {result['suggested_question']}")
+                                    questions_generated_count += 1
                                 
                                 response = {
                                     "type": "transcript",
@@ -125,6 +134,8 @@ async def audio_websocket(
                                     "suggested_question": result.get("suggested_question") if result else None,
                                     "alert_sent": result.get("alert_sent", False) if result else False,
                                 }
+                                if result and result.get("alert_sent"):
+                                    alerts_sent_count += 1
                                 print(f"[WS] Sending {len(segments)} segment(s) to client")
                                 await websocket.send_text(json.dumps(response))
                                 
@@ -146,6 +157,25 @@ async def audio_websocket(
         print(f"[WS] Error: {e}")
 
     finally:
+        # Update analytics on call end (wrapped in try/except to never break core functionality)
+        try:
+            if user_id:
+                call_duration = int(time.time() - call_start_time)
+                final_risk = session.get("risk_score", 0)
+                was_scam = final_risk >= 80
+                await asyncio.to_thread(
+                    update_call_analytics,
+                    user_id=user_id,
+                    call_duration_seconds=call_duration,
+                    final_risk_score=final_risk,
+                    caller_phone_number=caller_phone_number,
+                    was_scam=was_scam,
+                    questions_generated=questions_generated_count,
+                    alerts_sent=alerts_sent_count,
+                )
+        except Exception as analytics_error:
+            print(f"[WS] Analytics update failed (non-blocking): {analytics_error}")
+        
         if session_id:
             session_manager.delete_session(session_id)
         await websocket.close()
