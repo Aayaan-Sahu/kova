@@ -33,6 +33,7 @@ async def audio_websocket(
         "risk_score": 0,
         "confidence_score": 0,
         "last_alert_time": 0,
+        "last_question_time": 0,
         "emergency_contacts": ["+16692940189"],  # Replace with real number
         "caller_phone_number": caller_phone_number,
         "suspicious_number_reported": False,
@@ -73,6 +74,7 @@ async def audio_websocket(
                                         confidence_score=session["confidence_score"],
                                         emergency_contacts=session["emergency_contacts"],
                                         last_alert_time=session["last_alert_time"],
+                                        last_question_time=session.get("last_question_time", 0),
                                         caller_phone_number=session.get("caller_phone_number"),
                                         suspicious_number_reported=session.get("suspicious_number_reported", False),
                                     )
@@ -81,6 +83,7 @@ async def audio_websocket(
                                     session["risk_score"] = result["risk_score"]
                                     session["confidence_score"] = result["confidence_score"]
                                     session["last_alert_time"] = result["last_alert_time"]
+                                    session["last_question_time"] = result.get("last_question_time", 0)
                                     session["suspicious_number_reported"] = result.get("suspicious_number_reported", False)
                                 
                                 print(f"[SCAM] Risk: {session['risk_score']} | Conf: {session['confidence_score']}")
