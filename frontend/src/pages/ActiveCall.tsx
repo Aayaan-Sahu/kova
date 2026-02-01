@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { AudioVisualizer } from '../components/AudioVisualizer';
+import { ChatPanel } from '../components/ChatPanel';
 import { cn } from '../utils/cn';
 import { ShieldAlert, ShieldCheck, ShieldQuestion, PhoneOff, X, MessageCircleQuestion } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -44,6 +45,9 @@ export const ActiveCall = () => {
     const audioContextRef = useRef<AudioContext | null>(null);
     const processorRef = useRef<ScriptProcessorNode | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
+
+    // Session ID for chatbot context - stable across component lifecycle
+    const sessionId = useMemo(() => crypto.randomUUID(), []);
 
     // Get available audio input devices
     useEffect(() => {
@@ -143,7 +147,7 @@ export const ActiveCall = () => {
             const processor = audioContext.createScriptProcessor(4096, 1, 1);
             processorRef.current = processor;
 
-            const wsUrl = `ws://localhost:8000/ws/audio?sample_rate=${audioContext.sampleRate}&caller_phone_number=${encodeURIComponent(callerPhoneNumber)}`;
+            const wsUrl = `ws://localhost:8000/ws/audio?sample_rate=${audioContext.sampleRate}&caller_phone_number=${encodeURIComponent(callerPhoneNumber)}&session_id=${sessionId}`;
             socketRef.current = new WebSocket(wsUrl);
 
             socketRef.current.onopen = () => {
@@ -202,7 +206,7 @@ export const ActiveCall = () => {
         } catch (error) {
             console.error("Error accessing microphone:", error);
         }
-    }, [selectedDeviceId]);
+    }, [selectedDeviceId, callerPhoneNumber, sessionId]);
 
     const stopListening = useCallback(() => {
         if (processorRef.current) {
@@ -428,6 +432,8 @@ export const ActiveCall = () => {
                 </div>
             </div>
 
+            {/* Chatbot Panel */}
+            <ChatPanel sessionId={isListening ? sessionId : null} isListening={isListening} />
         </div>
     );
 };
