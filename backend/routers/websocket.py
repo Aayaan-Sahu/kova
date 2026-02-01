@@ -9,6 +9,8 @@ from starlette.websockets import WebSocketDisconnect
 from services.deepgram_client import create_live_connection
 from services.transcript_processor import TranscriptProcessor
 from services.workflow import process_chunk
+from services import session_manager
+from services.session_state import SessionState
 
 router = APIRouter()
 
@@ -18,6 +20,7 @@ async def audio_websocket(
     websocket: WebSocket,
     sample_rate: int = Query(default=48000),
     caller_phone_number: str = Query(default=None),
+    session_id: str = Query(default=None),
 ):
     """
     WebSocket endpoint for real-time audio transcription and scam detection.
@@ -37,6 +40,14 @@ async def audio_websocket(
         "caller_phone_number": caller_phone_number,
         "suspicious_number_reported": False,
     }
+
+    # Register session for Chatbot access
+    if session_id:
+        print(f"[WS] Registering session: {session_id}")
+        live_session = SessionState()
+        session_manager.save_session(session_id, live_session)
+    else:
+        live_session = None
 
     try:
         async with create_live_connection(sample_rate) as dg_connection:
@@ -81,7 +92,15 @@ async def audio_websocket(
                                     session["risk_score"] = result["risk_score"]
                                     session["confidence_score"] = result["confidence_score"]
                                     session["last_alert_time"] = result["last_alert_time"]
+                                    session["last_alert_time"] = result["last_alert_time"]
                                     session["suspicious_number_reported"] = result.get("suspicious_number_reported", False)
+                                    
+                                    # Sync with shared session state for Chatbot
+                                    if live_session:
+                                        live_session.transcript_history = session["transcript_history"]
+                                        live_session.risk_score = session["risk_score"]
+                                        live_session.confidence_score = session["confidence_score"]
+                                        live_session.latest_reasoning = result.get("latest_reasoning", "")
                                 
                                 print(f"[SCAM] Risk: {session['risk_score']} | Conf: {session['confidence_score']}")
                                 if result and result.get("suggested_question"):
@@ -117,5 +136,7 @@ async def audio_websocket(
         print(f"[WS] Error: {e}")
 
     finally:
+        if session_id:
+            session_manager.delete_session(session_id)
         await websocket.close()
         print("[WS] Connection closed")

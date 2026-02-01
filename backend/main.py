@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from routers.websocket import router as websocket_router
+from routers.chat import router as chat_router
 
 app = FastAPI(
     title="Kova API",
@@ -9,6 +10,7 @@ app = FastAPI(
 
 # Include routers
 app.include_router(websocket_router)
+app.include_router(chat_router)
 
 
 if __name__ == "__main__":
