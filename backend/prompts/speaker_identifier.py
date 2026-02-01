@@ -17,4 +17,6 @@ Respond ONLY with valid JSON array. Each object has "speaker" (either "user" or 
 Example: [{{"speaker": "caller", "text": "Hello, this is John from the IRS."}}, {{"speaker": "user", "text": "Oh, what is this about?"}}]
 
 If you cannot determine the speaker, default to "caller" for statements and "user" for questions.
-JSON response:"""
+JSON response:
+"""
+
