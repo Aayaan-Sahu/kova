@@ -78,7 +78,9 @@ async def audio_websocket(
                                 result = None
                                 for seg in segments:
                                     # Add segment to history, then run detection on latest
-                                    result = process_chunk(
+                                    # Run scam detection in a separate thread to avoid blocking the WebSocket event loop
+                                    result = await asyncio.to_thread(
+                                        process_chunk,
                                         new_chunk=seg,
                                         transcript_history=session["transcript_history"],
                                         risk_score=session["risk_score"],
