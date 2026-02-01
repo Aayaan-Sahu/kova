@@ -12,7 +12,7 @@ def get_ai_client():
     if ai_client is None:
         ai_client = AsyncOpenAI(
             base_url="https://api.keywordsai.co/api",
-            api_key=os.getenv("KEYWORDS_API_KEY"),
+            api_key=os.getenv("KEYWORDS_AI_API_KEY"),
         )
     return ai_client
 
