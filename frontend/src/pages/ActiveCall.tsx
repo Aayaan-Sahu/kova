@@ -6,6 +6,7 @@ import { ChatPanel } from '../components/ChatPanel';
 import { cn } from '../utils/cn';
 import { ShieldAlert, ShieldCheck, ShieldQuestion, PhoneOff, X, MessageCircleQuestion } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../contexts/AuthContext';
 
 interface AudioDevice {
     deviceId: string;
@@ -30,6 +31,7 @@ interface TranscriptMessage {
 export const ActiveCall = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { user } = useAuth();
     const callerPhoneNumber = (location.state as { callerPhoneNumber?: string })?.callerPhoneNumber || '';
     const [riskScore, setRiskScore] = useState(0);
     const [confidenceScore, setConfidenceScore] = useState(0);
@@ -147,7 +149,7 @@ export const ActiveCall = () => {
             const processor = audioContext.createScriptProcessor(4096, 1, 1);
             processorRef.current = processor;
 
-            const wsUrl = `ws://localhost:8000/ws/audio?sample_rate=${audioContext.sampleRate}&caller_phone_number=${encodeURIComponent(callerPhoneNumber)}&session_id=${sessionId}`;
+            const wsUrl = `ws://localhost:8000/ws/audio?sample_rate=${audioContext.sampleRate}&caller_phone_number=${encodeURIComponent(callerPhoneNumber)}&session_id=${sessionId}&user_id=${user?.id || ''}`;
             socketRef.current = new WebSocket(wsUrl);
 
             socketRef.current.onopen = () => {
