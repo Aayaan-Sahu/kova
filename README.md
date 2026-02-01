@@ -89,19 +89,63 @@ Kova is a real-time scam call protection system designed to help older adults st
 
 ## Project Structure
 
+## Project Structure
+
 ```
 kova/
 ├── backend/
-│   ├── main.py           # FastAPI application entry point
-│   ├── routers/          # API route handlers
-│   ├── services/         # Business logic and integrations
-│   ├── prompts/          # LLM prompt templates
-│   └── tests/            # Test files
+│   ├── main.py                 # FastAPI application entry point
+│   ├── routers/
+│   │   ├── api.py              # REST API endpoints
+│   │   ├── chat.py             # Chatbot API routes
+│   │   ├── wakeword.py         # Wake word detection endpoint
+│   │   └── websocket.py        # WebSocket handler for real-time audio streaming
+│   ├── services/
+│   │   ├── alert_sender.py     # iMessage alert sending via AppleScript
+│   │   ├── chat_bot.py         # Claude chatbot integration
+│   │   ├── deepgram_client.py  # Deepgram transcription client
+│   │   ├── question_generator.py # Generates verification questions
+│   │   ├── scam_detector.py    # LLM-based scam analysis
+│   │   ├── session_manager.py  # Manages active call sessions
+│   │   ├── session_state.py    # Call session state model
+│   │   ├── speaker_identifier.py # Identifies user vs caller in transcript
+│   │   ├── supabase_client.py  # Database operations
+│   │   ├── transcript_processor.py # Processes transcription results
+│   │   └── workflow.py         # LangGraph workflow orchestration
+│   ├── prompts/
+│   │   ├── chatbot_prompts.py  # System prompts for chat companion
+│   │   ├── question_gen.py     # Prompts for verification questions
+│   │   ├── scam_detection.py   # Scam detection system prompts
+│   │   └── speaker_identifier.py # Speaker identification prompts
+│   └── tests/
 ├── frontend/
-│   ├── src/              # React source code
-│   ├── public/           # Static assets
-│   └── index.html        # HTML entry point
-└── supabase/             # Database configuration
+│   ├── src/
+│   │   ├── App.tsx             # Main app component with routing
+│   │   ├── main.tsx            # React entry point
+│   │   ├── components/
+│   │   │   ├── AudioVisualizer.tsx  # Real-time audio waveform display
+│   │   │   ├── ChatPanel.tsx        # AI chat companion interface
+│   │   │   ├── PhoneNumberModal.tsx # Phone number input modal
+│   │   │   └── ui/                  # Reusable UI components
+│   │   ├── pages/
+│   │   │   ├── Account.tsx     # User account settings
+│   │   │   ├── ActiveCall.tsx  # Main call monitoring interface
+│   │   │   ├── Analytics.tsx   # Call history and risk analytics
+│   │   │   ├── Dashboard.tsx   # Home dashboard
+│   │   │   ├── Login.tsx       # User login
+│   │   │   └── Signup.tsx      # User registration
+│   │   ├── lib/
+│   │   │   ├── analyticsApi.ts # Analytics data fetching
+│   │   │   ├── chatApi.ts      # Chat API client
+│   │   │   └── supabaseClient.ts # Supabase client setup
+│   │   ├── contexts/           # React context providers
+│   │   ├── hooks/              # Custom React hooks
+│   │   ├── layouts/            # Page layout components
+│   │   ├── types/              # TypeScript type definitions
+│   │   └── utils/              # Utility functions
+│   ├── public/                 # Static assets
+│   └── index.html              # HTML entry point
+└── supabase/                   # Database configuration
 ```
 
 ## License
