@@ -52,13 +52,6 @@ def chat_with_protector(user_query: str, session: SessionState) -> str:
     history_str = format_history_for_context(session.transcript_history)
     chat_history_str = format_chatbot_history(session.chatbot_history)
     risk_info = f"Current Risk Score: {session.risk_score}/100\nConfidence Score: {session.confidence_score}/100"
-    
-    system_prompt = CHATBOT_SYSTEM_PROMPT.format(
-        risk_info=risk_info,
-        history_str=history_str,
-        chat_history_str=chat_history_str,
-        user_query=user_query
-    )
 
     # Update history immediately (optimistic)
     session.chatbot_history.append({"role": "user", "content": user_query})
@@ -66,12 +59,19 @@ def chat_with_protector(user_query: str, session: SessionState) -> str:
     try:
         response = _get_client().chat.completions.create(
             model="bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0", 
-            messages=[
-                {"role": "user", "content": system_prompt} # Claude often prefers single user prompt for context
-            ],
-            extra_body={"prompt_name": "kova-companion-v1"}, # Tag for analytics
-            temperature=0.3,
-            max_tokens=300
+            messages=[{"role": "user", "content": "placeholder"}],  # This will be overridden
+            extra_body={
+                "prompt": {
+                    "prompt_id": "32526990b48c44daa229d34ccaa1ad25",
+                    "variables": {
+                        "risk_info": risk_info,
+                        "history_str": history_str,
+                        "chat_history_str": chat_history_str,
+                        "user_query": user_query
+                    },
+                    "override": True
+                }
+            }
         )
         
         answer = response.choices[0].message.content
