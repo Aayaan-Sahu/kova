@@ -46,6 +46,9 @@ async def audio_websocket(
     if session_id:
         print(f"[WS] Registering session: {session_id}")
         live_session = SessionState()
+        # Initialize workflow state for chat endpoint
+        live_session.emergency_contacts = session["emergency_contacts"]
+        live_session.caller_phone_number = session["caller_phone_number"]
         session_manager.save_session(session_id, live_session)
     else:
         live_session = None
@@ -105,6 +108,9 @@ async def audio_websocket(
                                         live_session.risk_score = session["risk_score"]
                                         live_session.confidence_score = session["confidence_score"]
                                         live_session.latest_reasoning = result.get("latest_reasoning", "")
+                                        live_session.last_alert_time = session["last_alert_time"]
+                                        live_session.last_question_time = session["last_question_time"]
+                                        live_session.suspicious_number_reported = session["suspicious_number_reported"]
                                 
                                 print(f"[SCAM] Risk: {session['risk_score']} | Conf: {session['confidence_score']}")
                                 if result and result.get("suggested_question"):
