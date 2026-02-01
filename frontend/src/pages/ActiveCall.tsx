@@ -32,7 +32,9 @@ export const ActiveCall = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user } = useAuth();
-    const callerPhoneNumber = (location.state as { callerPhoneNumber?: string })?.callerPhoneNumber || '';
+    const locationState = location.state as { callerPhoneNumber?: string; autoStart?: boolean } | null;
+    const callerPhoneNumber = locationState?.callerPhoneNumber || '';
+    const autoStart = locationState?.autoStart || false;
     const [riskScore, setRiskScore] = useState(0);
     const [confidenceScore, setConfidenceScore] = useState(0);
     const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([]);
@@ -178,21 +180,29 @@ export const ActiveCall = () => {
             // Handle incoming transcripts with speaker info
             socketRef.current.onmessage = (event) => {
                 try {
-                    const message: TranscriptMessage = JSON.parse(event.data);
+                    const message = JSON.parse(event.data);
                     console.log('Received:', message);
 
+                    // Handle "kova stop" voice command
+                    if (message.type === 'stop_call') {
+                        console.log('[ActiveCall] "kova stop" detected, ending call...');
+                        handleEndCall();
+                        return;
+                    }
+
                     if (message.type === 'transcript') {
-                        if (message.segments.length > 0) {
-                            setTranscriptSegments(prev => [...prev, ...message.segments]);
+                        const transcriptMessage = message as TranscriptMessage;
+                        if (transcriptMessage.segments.length > 0) {
+                            setTranscriptSegments(prev => [...prev, ...transcriptMessage.segments]);
                         }
-                        setRiskScore(message.risk_score);
-                        setConfidenceScore(message.confidence_score);
+                        setRiskScore(transcriptMessage.risk_score);
+                        setConfidenceScore(transcriptMessage.confidence_score);
 
                         // Add new question if not duplicate
-                        if (message.suggested_question) {
+                        if (transcriptMessage.suggested_question) {
                             setSuggestedQuestions(prev => {
-                                if (prev.includes(message.suggested_question!)) return prev;
-                                const updated = [message.suggested_question!, ...prev];
+                                if (prev.includes(transcriptMessage.suggested_question!)) return prev;
+                                const updated = [transcriptMessage.suggested_question!, ...prev];
                                 return updated.slice(0, 3); // Keep max 3
                             });
                         }
@@ -234,6 +244,14 @@ export const ActiveCall = () => {
 
         setIsListening(false);
     }, []);
+
+    // Auto-start recording when navigated via wake word
+    useEffect(() => {
+        if (autoStart && !isListening) {
+            console.log('[ActiveCall] Auto-starting recording from wake word...');
+            startListening();
+        }
+    }, [autoStart]); // Only run once when component mounts with autoStart
 
     const handleEndCall = () => {
         stopListening();

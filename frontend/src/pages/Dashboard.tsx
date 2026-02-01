@@ -1,16 +1,31 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { PhoneNumberModal } from '../components/PhoneNumberModal';
-import { Shield, Settings, LogOut, BarChart3, User, ChevronDown } from 'lucide-react';
+import { Shield, Settings, LogOut, BarChart3, User, ChevronDown, Mic, MicOff } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../contexts/AuthContext';
+import { useWakeWord } from '../hooks/useWakeWord';
 
 export const Dashboard = () => {
     const navigate = useNavigate();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [showPhoneModal, setShowPhoneModal] = useState(false);
+    const [wakeWordEnabled, setWakeWordEnabled] = useState(true);
     const { profile, signOut } = useAuth();
+
+    // Handle wake word detection - navigate directly to active call with autoStart
+    const handleWakeWordDetected = useCallback(() => {
+        console.log('[Dashboard] Wake word detected! Navigating to active call with auto-start...');
+        navigate('/active', { state: { callerPhoneNumber: '', autoStart: true } });
+    }, [navigate]);
+
+    // Wake word listener
+    const { isListening: isWakeWordListening, isSupported: isWakeWordSupported } = useWakeWord({
+        wakeWord: 'kova activate',
+        onWakeWord: handleWakeWordDetected,
+        enabled: wakeWordEnabled,
+    });
 
     const handleStartProtection = () => {
         setShowPhoneModal(true);
@@ -24,6 +39,11 @@ export const Dashboard = () => {
     const handleSignOut = async () => {
         await signOut();
         navigate('/login');
+    };
+
+    const handleToggleWakeWord = () => {
+        setWakeWordEnabled(!wakeWordEnabled);
+        // The enabled prop change will trigger start/stop in the hook
     };
 
     // Get display name and initials from profile
@@ -173,6 +193,38 @@ export const Dashboard = () => {
                 onClose={() => setShowPhoneModal(false)}
                 onSubmit={handlePhoneSubmit}
             />
+
+            {/* Wake Word Indicator - Floating at bottom */}
+            {isWakeWordSupported && (
+                <button
+                    onClick={handleToggleWakeWord}
+                    className={cn(
+                        "fixed bottom-6 right-6 p-4 rounded-full shadow-lg transition-all duration-300 group",
+                        "border backdrop-blur-xl",
+                        isWakeWordListening
+                            ? "bg-brand-500/20 border-brand-500/50 hover:bg-brand-500/30 shadow-brand-500/30"
+                            : "bg-neutral-800/80 border-neutral-700 hover:bg-neutral-700/80 opacity-60 hover:opacity-100"
+                    )}
+                    title={isWakeWordListening ? 'Voice activation ON - Say "kova activate" to start' : 'Voice activation OFF - Click to enable'}
+                >
+                    {isWakeWordListening ? (
+                        <Mic className="w-6 h-6 text-brand-400 animate-pulse" />
+                    ) : (
+                        <MicOff className="w-6 h-6 text-neutral-500" />
+                    )}
+
+                    {/* Tooltip */}
+                    <span className={cn(
+                        "absolute bottom-full right-0 mb-2 px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap",
+                        "opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none",
+                        isWakeWordListening
+                            ? "bg-brand-500/20 text-brand-300 border border-brand-500/30"
+                            : "bg-neutral-800 text-neutral-400 border border-neutral-700"
+                    )}>
+                        {isWakeWordListening ? 'Say "kova activate"' : 'Click to enable voice activation'}
+                    </span>
+                </button>
+            )}
         </div>
     );
 };

@@ -17,6 +17,29 @@ from services.supabase_client import update_call_analytics
 router = APIRouter()
 
 
+def detect_kova_stop(transcript: str) -> bool:
+    """
+    Detect "kova stop" command using syllable matching.
+    "kova" isn't a real word, so we match syllables:
+    - First syllable: "ko" or "co"
+    - Second syllable: "va", "vah", or "ver"
+    Plus the word "stop"
+    """
+    transcript_lower = transcript.lower()
+    
+    first_syllables = ["ko", "co"]
+    second_syllables = ["va", "vah", "ver", "vid", "bra"]
+    
+    has_first = any(s in transcript_lower for s in first_syllables)
+    has_second = any(s in transcript_lower for s in second_syllables)
+    has_stop = "stop" in transcript_lower
+    
+    if has_first and has_second and has_stop:
+        print(f"[WS] 'kova stop' detected! (first={has_first}, second={has_second}, stop={has_stop})")
+        return True
+    return False
+
+
 @router.websocket("/ws/audio")
 async def audio_websocket(
     websocket: WebSocket,
@@ -79,6 +102,14 @@ async def audio_websocket(
                             continue
                             
                         print(f"[DG] {'Final' if is_final else 'Interim'}: {transcript}")
+                        
+                        # Check for "kova stop" voice command
+                        if detect_kova_stop(transcript):
+                            await websocket.send_text(json.dumps({
+                                "type": "stop_call",
+                                "transcript": transcript
+                            }))
+                            return  # Exit the transcript loop
                         
                         if is_final:
                             processor.add_transcript(transcript)
@@ -179,5 +210,8 @@ async def audio_websocket(
         
         if session_id:
             session_manager.delete_session(session_id)
-        await websocket.close()
+        try:
+            await websocket.close()
+        except Exception:
+            pass  # Already closed
         print("[WS] Connection closed")
