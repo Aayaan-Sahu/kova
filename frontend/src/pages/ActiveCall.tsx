@@ -249,10 +249,10 @@ export const ActiveCall = () => {
     const getMeshColors = () => {
         switch (status) {
             case 'safe': return {
-                from: 'from-[#50C878]',
-                via: 'via-[#228B22]',
-                to: 'to-[#98FF98]',
-                glow: 'bg-emerald-500'
+                from: 'from-brand-600',
+                via: 'via-brand-500',
+                to: 'to-brand-400',
+                glow: 'bg-brand-500' // Cyan/Blue glow for Safe
             };
             case 'warning': return {
                 from: 'from-amber-400',
@@ -273,7 +273,7 @@ export const ActiveCall = () => {
 
     const getStatusColor = () => {
         switch (status) {
-            case 'safe': return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+            case 'safe': return 'text-brand-400 bg-brand-500/10 border-brand-500/20 shadow-[0_0_35px_rgba(14,165,233,0.3)]'; // Increased glow
             case 'warning': return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
             case 'danger': return 'text-red-400 bg-red-500/10 border-red-500/20';
         }
@@ -290,32 +290,27 @@ export const ActiveCall = () => {
                 )}
             />
 
-            {/* Rotating Mesh Gradient Border */}
+            {/* Sleek Static Glowing Border - Modeled after Image 2 */}
             <div className="absolute inset-0 z-0 p-[2px] rounded-[3rem] overflow-hidden">
-                {/* The Rotating Gradient Layer - CHANGED TO STATIC PULSING to prevent corner glitches */}
-                <motion.div
+                {/* Static Gradient Border Layer */}
+                <div
                     className={cn(
-                        "absolute inset-[-50%] w-[200%] h-[200%] opacity-100 transition-colors duration-1000",
-                        mesh.from, mesh.via, mesh.to
+                        "absolute inset-0 transition-colors duration-700 opacity-80",
+                        status === 'safe' ? "bg-gradient-to-b from-brand-500 via-transparent to-brand-600" :
+                            status === 'warning' ? "bg-gradient-to-b from-amber-500 via-transparent to-amber-600" :
+                                "bg-gradient-to-b from-red-600 via-transparent to-red-600"
                     )}
-                    // Removed rotation to keep corners static as requested
-                    animate={{
-                        opacity: [0.8, 1, 0.8],
-                        scale: [1, 1.02, 1]
-                    }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                    style={{
-                        backgroundImage: `conic-gradient(from 0deg, var(--tw-gradient-from), var(--tw-gradient-via), var(--tw-gradient-to), var(--tw-gradient-from))`
-                    }}
                 />
 
-                <div className="absolute inset-[3px] bg-neutral-950 rounded-[calc(3rem-3px)] z-10" />
+                {/* Inner Black Background */}
+                <div className="absolute inset-[1px] bg-neutral-950 rounded-[calc(3rem-1px)] z-10" />
 
+                {/* Inner Glow/Shadow for Depth */}
                 <div className={cn(
-                    "absolute inset-0 z-20 rounded-[3rem] shadow-[inset_0_0_60px_rgba(0,0,0,0.3)] transition-shadow duration-1000",
-                    status === 'safe' && "shadow-[inset_0_0_40px_rgba(34,197,94,0.3)]",
-                    status === 'warning' && "shadow-[inset_0_0_40px_rgba(245,158,11,0.3)]",
-                    status === 'danger' && "shadow-[inset_0_0_40px_rgba(239,68,68,0.4)]"
+                    "absolute inset-0 z-20 rounded-[3rem] shadow-[inset_0_0_50px_rgba(0,0,0,0.6)] transition-shadow duration-700",
+                    status === 'safe' && "shadow-[inset_0_0_40px_rgba(14,165,233,0.4)] border border-brand-500/50",
+                    status === 'warning' && "shadow-[inset_0_0_30px_rgba(245,158,11,0.3)] border border-amber-500/30",
+                    status === 'danger' && "shadow-[inset_0_0_40px_rgba(239,68,68,0.4)] border border-red-500/30"
                 )} />
             </div>
 
@@ -406,7 +401,7 @@ export const ActiveCall = () => {
                             className={cn(
                                 "flex-1 border-neutral-800 backdrop-blur-xl transition-all",
                                 isListening
-                                    ? "bg-emerald-500/20 border-emerald-500/30 hover:bg-emerald-500/30"
+                                    ? "bg-brand-500/20 border-brand-500/30 hover:bg-brand-500/30"
                                     : "bg-neutral-900/60 hover:bg-neutral-800"
                             )}
                             onClick={isListening ? stopListening : startListening}
