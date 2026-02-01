@@ -27,7 +27,7 @@ export const useWakeWord = ({
     const audioContextRef = useRef<AudioContext | null>(null);
     const processorRef = useRef<ScriptProcessorNode | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
-    const shouldBeListeningRef = useRef(false);
+    const shouldBeListeningRef = useRef(enabled);
     const onWakeWordRef = useRef(onWakeWord);
     const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -58,6 +58,8 @@ export const useWakeWord = ({
         }
 
         if (socketRef.current) {
+            // Prevent onclose handler from triggering reconnect during manual cleanup
+            socketRef.current.onclose = null;
             socketRef.current.close();
             socketRef.current = null;
         }
@@ -81,6 +83,13 @@ export const useWakeWord = ({
                     autoGainControl: true,
                 }
             });
+
+            // CHECKPOINT 1: Check if muted during getUserMedia await
+            if (!shouldBeListeningRef.current) {
+                console.log('[WakeWord] Muted during getUserMedia, aborting');
+                stream.getTracks().forEach(track => track.stop());
+                return;
+            }
             streamRef.current = stream;
 
             // Set up audio context
@@ -88,6 +97,16 @@ export const useWakeWord = ({
             const audioContext = new AudioContextClass();
             audioContextRef.current = audioContext;
             await audioContext.resume();
+
+            // CHECKPOINT 2: Check if muted during audioContext.resume() await
+            if (!shouldBeListeningRef.current) {
+                console.log('[WakeWord] Muted during audioContext.resume, aborting');
+                stream.getTracks().forEach(track => track.stop());
+                audioContext.close();
+                streamRef.current = null;
+                audioContextRef.current = null;
+                return;
+            }
 
             // Connect to backend WebSocket
             const wsUrl = `ws://localhost:8000/ws/wakeword?sample_rate=${audioContext.sampleRate}&wake_word=${encodeURIComponent(wakeWord)}`;
