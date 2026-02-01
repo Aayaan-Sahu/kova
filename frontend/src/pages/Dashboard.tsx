@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { PhoneNumberModal } from '../components/PhoneNumberModal';
+import { VoiceActivationListener } from '../components/VoiceActivationListener';
 import { Shield, Settings, LogOut, BarChart3, User, ChevronDown } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../contexts/AuthContext';
@@ -173,6 +174,9 @@ export const Dashboard = () => {
                 onClose={() => setShowPhoneModal(false)}
                 onSubmit={handlePhoneSubmit}
             />
+
+            {/* Voice Activation Listener */}
+            <VoiceActivationListener />
         </div>
     );
 };

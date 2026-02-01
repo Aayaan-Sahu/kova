@@ -32,7 +32,12 @@ export const ActiveCall = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user } = useAuth();
-    const callerPhoneNumber = (location.state as { callerPhoneNumber?: string })?.callerPhoneNumber || '';
+
+    // Extract navigation state - voice activation bypasses phone number entry
+    const locationState = location.state as { callerPhoneNumber?: string; voiceActivated?: boolean } | null;
+    const callerPhoneNumber = locationState?.callerPhoneNumber || '';
+    const voiceActivated = locationState?.voiceActivated || false;
+
     const [riskScore, setRiskScore] = useState(0);
     const [confidenceScore, setConfidenceScore] = useState(0);
     const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([]);
@@ -47,6 +52,9 @@ export const ActiveCall = () => {
     const audioContextRef = useRef<AudioContext | null>(null);
     const processorRef = useRef<ScriptProcessorNode | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
+
+    // Track if we've already auto-started from voice activation
+    const hasAutoStarted = useRef(false);
 
     // Session ID for chatbot context - stable across component lifecycle
     const sessionId = useMemo(() => crypto.randomUUID(), []);
@@ -234,6 +242,19 @@ export const ActiveCall = () => {
 
         setIsListening(false);
     }, []);
+
+    // Auto-start listening if voice activated (must be after startListening definition)
+    useEffect(() => {
+        if (voiceActivated && !hasAutoStarted.current && selectedDeviceId) {
+            hasAutoStarted.current = true;
+            console.log('[ActiveCall] Voice activated - auto-starting listener');
+            // Small delay to ensure audio devices are ready
+            const timer = setTimeout(() => {
+                startListening();
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [voiceActivated, selectedDeviceId, startListening]);
 
     const handleEndCall = () => {
         stopListening();
