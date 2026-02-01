@@ -39,13 +39,26 @@ async def identify_speakers(transcript: str, conversation_history: list[dict]) -
         history_context=history_context if history_context else "(No previous context)",
         transcript=transcript
     )
+
     try:
         response = await get_ai_client().chat.completions.create(
             model="groq/llama-3.3-70b-versatile",  # Using Keywords AI routing
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role": "user", "content": "placeholder"}],  # This will be overridden
+            extra_body={
+                "prompt": {
+                    "prompt_id": "5d0acca6b535484ca9a6c0950717a4fd",
+                    "variables": {
+                        "history_context": history_context,
+                        "transcript": transcript
+                    },
+                    "override": True
+                }
+            },
             temperature=0.1,  # Low temperature for consistent output
             max_tokens=500,
         )
+
+
         
         content = response.choices[0].message.content.strip()
         
