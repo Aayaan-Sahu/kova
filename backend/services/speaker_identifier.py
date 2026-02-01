@@ -34,11 +34,6 @@ async def identify_speakers(transcript: str, conversation_history: list[dict]) -
         recent_history = conversation_history[-10:]  # Last 10 segments for context
         for seg in recent_history:
             history_context += f"{seg['speaker'].upper()}: {seg['text']}\n"
-    
-    prompt = SPEAKER_ID_PROMPT.format(
-        history_context=history_context if history_context else "(No previous context)",
-        transcript=transcript
-    )
 
     try:
         response = await get_ai_client().chat.completions.create(
@@ -53,9 +48,7 @@ async def identify_speakers(transcript: str, conversation_history: list[dict]) -
                     },
                     "override": True
                 }
-            },
-            temperature=0.1,  # Low temperature for consistent output
-            max_tokens=500,
+            }
         )
 
 
