@@ -67,8 +67,7 @@ export const Dashboard = () => {
                             <Shield className="w-6 h-6 text-brand-500" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold text-white">Welcome back, {displayName.split(' ')[0]}</h1>
-                            <p className="text-neutral-400 text-sm">System Status: <span className="text-brand-400 font-medium">Active</span></p>
+                            <h1 className="text-2xl font-bold text-white">Welcome Back, {displayName.split(' ')[0]}</h1>
                         </div>
                     </div>
 

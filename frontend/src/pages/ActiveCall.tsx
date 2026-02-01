@@ -43,6 +43,7 @@ export const ActiveCall = () => {
     const [isListening, setIsListening] = useState(false);
     const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+    const [alertSent, setAlertSent] = useState(false);
 
     // WebSocket and audio refs
     const socketRef = useRef<WebSocket | null>(null);
@@ -197,6 +198,10 @@ export const ActiveCall = () => {
                         }
                         setRiskScore(transcriptMessage.risk_score);
                         setConfidenceScore(transcriptMessage.confidence_score);
+
+                        if (transcriptMessage.alert_sent) {
+                            setAlertSent(true);
+                        }
 
                         // Add new question if not duplicate
                         if (transcriptMessage.suggested_question) {
@@ -377,9 +382,19 @@ export const ActiveCall = () => {
 
                     {/* Status message when listening */}
                     <div className="w-full text-center py-4">
-                        <p className="text-neutral-500 italic font-light text-sm">
-                            {isListening ? 'Listening for conversation...' : 'Press Start to begin listening...'}
-                        </p>
+                        {alertSent ? (
+                            <motion.p
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="text-red-500 font-bold text-lg tracking-wide uppercase animate-pulse"
+                            >
+                                Scam Detected: Hang Up ASAP
+                            </motion.p>
+                        ) : (
+                            <p className="text-neutral-500 italic font-light text-sm">
+                                {isListening ? 'Listening for conversation...' : 'Press Start to begin listening...'}
+                            </p>
+                        )}
                     </div>
 
                     {/* Suggested Questions */}
@@ -416,6 +431,8 @@ export const ActiveCall = () => {
                         )}
                     </AnimatePresence>
                 </div>
+
+
 
                 {/* Controls */}
                 <div className="w-full max-w-sm space-y-4">
