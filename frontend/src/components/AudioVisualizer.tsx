@@ -149,7 +149,7 @@ export const AudioVisualizer = ({ isActive, className, status = 'safe', audioStr
 
     const getStatusStyles = () => {
         switch (status) {
-            case 'safe': return 'from-[#50C878] to-[#228B22] shadow-[0_0_20px_-5px_rgba(34,197,94,0.5)]'; // Emerald
+            case 'safe': return 'from-brand-500 to-brand-700 shadow-[0_0_20px_-5px_rgba(14,165,233,0.5)]'; // Brand Blue
             case 'warning': return 'from-amber-400 to-amber-600 shadow-[0_0_20px_-5px_rgba(245,158,11,0.5)]'; // Amber
             // Danger: Lighter bottom (red-500), Dark Maroon Top (red-900). 
             // Also added red-400 glow to "make top slightly lighter" appearance via shadow/border effect if needed, 
