@@ -27,6 +27,35 @@ def get_supabase_client() -> Client:
     return _supabase_client
 
 
+def get_emergency_contact_number(user_id: str) -> str:
+    """
+    Get the first emergency contact's phone number from the profiles table.
+    
+    Args:
+        user_id: The user's UUID
+        
+    Returns:
+        The emergency contact's phone number, or None if not found
+    """
+    if not user_id:
+        return None
+    
+    try:
+        client = get_supabase_client()
+        result = client.table("profiles") \
+            .select("emergency_contact_one_number") \
+            .eq("id", user_id) \
+            .execute()
+        
+        if result.data and len(result.data) > 0:
+            return result.data[0].get("emergency_contact_one_number")
+        return None
+        
+    except Exception as e:
+        print(f"❌ Error getting emergency contact number: {e}")
+        return None
+
+
 def report_suspicious_number(phone_number: str) -> bool:
     """
     Report a suspicious phone number to the database.

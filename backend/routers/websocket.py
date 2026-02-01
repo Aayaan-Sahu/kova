@@ -12,7 +12,7 @@ from services.transcript_processor import TranscriptProcessor
 from services.workflow import process_chunk
 from services import session_manager
 from services.session_state import SessionState
-from services.supabase_client import update_call_analytics
+from services.supabase_client import update_call_analytics, get_emergency_contact_number
 
 router = APIRouter()
 
@@ -38,6 +38,10 @@ async def audio_websocket(
     
     processor = TranscriptProcessor()
     
+    # Get emergency contact from profiles database
+    emergency_contact = get_emergency_contact_number(user_id) if user_id else None
+    emergency_contacts = [emergency_contact] if emergency_contact else []
+    
     # Session state for scam detection
     session = {
         "transcript_history": [],
@@ -45,7 +49,7 @@ async def audio_websocket(
         "confidence_score": 0,
         "last_alert_time": 0,
         "last_question_time": 0,
-        "emergency_contacts": ["+16692940189"],  # Replace with real number
+        "emergency_contacts": emergency_contacts,
         "caller_phone_number": caller_phone_number,
         "suspicious_number_reported": False,
     }
