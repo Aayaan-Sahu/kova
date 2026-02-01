@@ -63,8 +63,8 @@ export const Dashboard = () => {
                 {/* Header */}
                 <div className="flex items-center justify-between relative z-10 animate-fade-in">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-brand-500/10 rounded-lg ring-1 ring-brand-500/20">
-                            <Shield className="w-6 h-6 text-brand-500" />
+                        <div className="h-10 w-10 rounded-lg overflow-hidden ring-1 ring-white/10 flex items-center justify-center">
+                            <img src="/kova.PNG" alt="Kova Logo" className="w-full h-full object-cover scale-150" />
                         </div>
                         <h1 className="text-2xl font-bold text-white">Welcome Back, {displayName.split(' ')[0]}</h1>
                     </div>
