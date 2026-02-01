@@ -64,9 +64,13 @@ export const useWakeWord = ({
     }, []);
 
     const startListening = useCallback(async () => {
-        if (!shouldBeListeningRef.current) {
-            shouldBeListeningRef.current = true;
+        // Guard: Don't start if already listening or socket exists
+        if (socketRef.current || streamRef.current) {
+            console.log('[WakeWord] Already listening, skipping start');
+            return;
         }
+
+        shouldBeListeningRef.current = true;
 
         try {
             // Get microphone access
@@ -180,18 +184,25 @@ export const useWakeWord = ({
         }
     }, [startListening, stopListening]);
 
-    // Auto-start when enabled
+    // Auto-start/stop when enabled changes
     useEffect(() => {
+        // Important: Update the ref immediately so reconnect logic respects it
+        shouldBeListeningRef.current = enabled;
+
         if (enabled) {
             startListening();
         } else {
-            stopListening();
+            // Force stop everything
+            cleanup();
+            setIsListening(false);
+            setError(null);
         }
 
         return () => {
+            shouldBeListeningRef.current = false;
             cleanup();
         };
-    }, [enabled]);
+    }, [enabled, startListening, cleanup]);
 
     return {
         isListening,

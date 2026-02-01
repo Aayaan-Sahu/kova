@@ -14,14 +14,14 @@ export const Dashboard = () => {
     const [wakeWordEnabled, setWakeWordEnabled] = useState(true);
     const { profile, signOut } = useAuth();
 
-    // Handle wake word detection - navigate directly to active call
+    // Handle wake word detection - navigate directly to active call with autoStart
     const handleWakeWordDetected = useCallback(() => {
-        console.log('[Dashboard] Wake word detected! Navigating to active call...');
-        navigate('/active', { state: { callerPhoneNumber: '' } });
+        console.log('[Dashboard] Wake word detected! Navigating to active call with auto-start...');
+        navigate('/active', { state: { callerPhoneNumber: '', autoStart: true } });
     }, [navigate]);
 
     // Wake word listener
-    const { isListening: isWakeWordListening, isSupported: isWakeWordSupported, toggleListening } = useWakeWord({
+    const { isListening: isWakeWordListening, isSupported: isWakeWordSupported } = useWakeWord({
         wakeWord: 'kova activate',
         onWakeWord: handleWakeWordDetected,
         enabled: wakeWordEnabled,
@@ -43,7 +43,7 @@ export const Dashboard = () => {
 
     const handleToggleWakeWord = () => {
         setWakeWordEnabled(!wakeWordEnabled);
-        toggleListening();
+        // The enabled prop change will trigger start/stop in the hook
     };
 
     // Get display name and initials from profile
