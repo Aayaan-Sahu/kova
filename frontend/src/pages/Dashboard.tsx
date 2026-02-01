@@ -66,10 +66,7 @@ export const Dashboard = () => {
                         <div className="p-2 bg-brand-500/10 rounded-lg ring-1 ring-brand-500/20">
                             <Shield className="w-6 h-6 text-brand-500" />
                         </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-white">Welcome back, {displayName.split(' ')[0]}</h1>
-                            <p className="text-neutral-400 text-sm">System Status: <span className="text-brand-400 font-medium">Active</span></p>
-                        </div>
+                        <h1 className="text-2xl font-bold text-white">Welcome Back, {displayName.split(' ')[0]}</h1>
                     </div>
 
                     <div className="relative">
@@ -120,7 +117,7 @@ export const Dashboard = () => {
                             <div className="space-y-4">
                                 <h2 className="text-4xl font-bold text-white tracking-tight">Kova Protection</h2>
                                 <p className="text-neutral-400 max-w-md text-lg leading-relaxed">
-                                    Ready to screen your calls? Activate real-time AI transcription and scam detection instantly.
+                                    Activate real-time AI transcription and scam detection instantly.
                                 </p>
                             </div>
 
@@ -141,31 +138,6 @@ export const Dashboard = () => {
 
                     {/* Sidebar / Quick Stats */}
                     <div className="space-y-6">
-                        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 space-y-4">
-                            <div className="flex items-center gap-3 text-neutral-400 mb-2">
-                                <BarChart3 className="w-5 h-5" />
-                                <span className="font-medium text-sm uppercase tracking-wider">Recent Activity</span>
-                            </div>
-
-                            <div className="space-y-4">
-                                {[1, 2, 3].map(i => (
-                                    <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-neutral-950 border border-neutral-800/50">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-2 h-2 rounded-full bg-brand-500" />
-                                            <div className="text-sm">
-                                                <p className="text-white font-medium">Unknown Caller</p>
-                                                <p className="text-xs text-neutral-500">Today, 2:30 PM</p>
-                                            </div>
-                                        </div>
-                                        <span className="text-xs font-medium text-brand-400 px-2 py-1 rounded-full bg-brand-500/10">Safe</span>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <Button variant="ghost" size="sm" className="w-full text-xs text-neutral-500 hover:text-white mt-2" onClick={() => navigate('/analytics')}>
-                                View All Activity
-                            </Button>
-                        </div>
 
                         <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6">
                             <div className="flex items-center gap-3 text-neutral-400 mb-4">
