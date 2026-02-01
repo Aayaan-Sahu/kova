@@ -81,3 +81,36 @@ def report_suspicious_number(phone_number: str) -> bool:
     except Exception as e:
         print(f"❌ Error reporting suspicious number: {e}")
         return False
+
+
+def check_suspicious_number(phone_number: str) -> dict:
+    """
+    Check if a phone number exists in the suspicious_numbers database.
+    
+    Args:
+        phone_number: The phone number to check (E.164 format preferred)
+        
+    Returns:
+        {"found": True, "report_count": N} if found, {"found": False} if not
+    """
+    if not phone_number:
+        return {"found": False}
+    
+    try:
+        client = get_supabase_client()
+        
+        result = client.table("suspicious_numbers") \
+            .select("phone_number, report_count") \
+            .eq("phone_number", phone_number) \
+            .execute()
+        
+        if result.data and len(result.data) > 0:
+            return {
+                "found": True,
+                "report_count": result.data[0]["report_count"]
+            }
+        return {"found": False}
+        
+    except Exception as e:
+        print(f"❌ Error checking suspicious number: {e}")
+        return {"found": False}
