@@ -59,13 +59,6 @@ If you cannot determine the speaker, default to "caller" for statements and "use
 JSON response:"""
 
     try:
-        # response = await groq_client.chat.completions.create(
-        #     model="llama-3.3-70b-versatile",  # Fast and accurate
-        #     messages=[{"role": "user", "content": prompt}],
-        #     temperature=0.1,  # Low temperature for consistent output
-        #     max_tokens=500,
-        # )
-
         response = await get_ai_client().chat.completions.create(
             model="groq/llama-3.3-70b-versatile",  # Fast and accurate
             messages=[{"role": "user", "content": prompt}],
