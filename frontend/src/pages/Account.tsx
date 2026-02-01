@@ -120,17 +120,6 @@ export const Account = () => {
                                 onChange={updateField('lastName')}
                                 disabled={hasData}
                             />
-                            <Input
-                                label="Email"
-                                defaultValue={profile?.id ? 'Loading...' : ''}
-                                disabled
-                            />
-                            <Input
-                                label="Phone Number"
-                                value={formData.phoneNumber}
-                                onChange={updateField('phoneNumber')}
-                                disabled={hasData}
-                            />
                         </div>
                     </div>
 

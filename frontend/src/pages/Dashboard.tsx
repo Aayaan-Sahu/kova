@@ -139,21 +139,21 @@ export const Dashboard = () => {
                     {/* Sidebar / Quick Stats */}
                     <div className="space-y-6">
 
-                        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 animate-slide-up animate-delay-200">
-                            <div className="flex items-center gap-3 text-neutral-400 mb-4">
+                        <Link to="/account" className="block bg-neutral-900 border border-neutral-800 rounded-3xl p-6 animate-slide-up animate-delay-200 hover:bg-neutral-800/80 transition-colors cursor-pointer group">
+                            <div className="flex items-center gap-3 text-neutral-400 mb-4 group-hover:text-neutral-300">
                                 <User className="w-5 h-5" />
                                 <span className="font-medium text-sm uppercase tracking-wider">Profile</span>
                             </div>
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-neutral-700 to-neutral-800 flex items-center justify-center text-white font-bold text-lg">
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-neutral-700 to-neutral-800 flex items-center justify-center text-white font-bold text-lg group-hover:scale-105 transition-transform">
                                     {initials}
                                 </div>
                                 <div>
-                                    <p className="text-white font-medium">{displayName}</p>
+                                    <p className="text-white font-medium group-hover:text-brand-400 transition-colors">{displayName}</p>
                                     <p className="text-xs text-neutral-500">{phoneNumber}</p>
                                 </div>
                             </div>
-                        </div>
+                        </Link>
                     </div>
 
                 </div>

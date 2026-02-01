@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button';
 import { AudioVisualizer } from '../components/AudioVisualizer';
 import { ChatPanel } from '../components/ChatPanel';
 import { cn } from '../utils/cn';
-import { ShieldAlert, ShieldCheck, ShieldQuestion, PhoneOff, X, MessageCircleQuestion } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, ShieldQuestion, PhoneOff, X, MessageCircleQuestion, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -43,6 +43,7 @@ export const ActiveCall = () => {
     const [isListening, setIsListening] = useState(false);
     const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+    const [showEmergencyAlert, setShowEmergencyAlert] = useState(false);
 
     // WebSocket and audio refs
     const socketRef = useRef<WebSocket | null>(null);
@@ -206,6 +207,11 @@ export const ActiveCall = () => {
                                 return updated.slice(0, 3); // Keep max 3
                             });
                         }
+
+                        // Show emergency alert when contacts are notified
+                        if (transcriptMessage.alert_sent) {
+                            setShowEmergencyAlert(true);
+                        }
                     }
                 } catch (e) {
                     console.error('Error parsing message:', e);
@@ -340,6 +346,36 @@ export const ActiveCall = () => {
 
             {/* Content Layer */}
             <div className="relative z-30 w-full flex flex-col items-center justify-between h-full pt-12 pb-6">
+
+                {/* Emergency Alert Banner */}
+                <AnimatePresence>
+                    {showEmergencyAlert && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                            className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4"
+                        >
+                            <div className="bg-red-500/20 border-2 border-red-500 rounded-2xl p-4 backdrop-blur-xl shadow-[0_0_40px_rgba(239,68,68,0.4)]">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-red-500/20 rounded-lg">
+                                        <AlertTriangle className="w-6 h-6 text-red-400 animate-pulse" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-red-400 font-bold text-lg">Scam Likely: Hang Up ASAP</p>
+                                        <p className="text-red-300/80 text-sm">Emergency contacts have been notified</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowEmergencyAlert(false)}
+                                        className="text-red-400 hover:text-red-300 transition-colors p-1"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Status Pill */}
                 <motion.div
