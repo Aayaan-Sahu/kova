@@ -184,25 +184,38 @@ export const useWakeWord = ({
         }
     }, [startListening, stopListening]);
 
-    // Auto-start/stop when enabled changes
+    // Refs for stable callback access without re-triggering effect
+    const startListeningRef = useRef(startListening);
+    const cleanupRef = useRef(cleanup);
+
     useEffect(() => {
+        startListeningRef.current = startListening;
+        cleanupRef.current = cleanup;
+    }, [startListening, cleanup]);
+
+    // Auto-start/stop when enabled changes - ONLY depend on enabled
+    useEffect(() => {
+        console.log(`[WakeWord] enabled changed to: ${enabled}`);
+
         // Important: Update the ref immediately so reconnect logic respects it
         shouldBeListeningRef.current = enabled;
 
         if (enabled) {
-            startListening();
+            startListeningRef.current();
         } else {
+            console.log('[WakeWord] Muting - stopping all listeners');
             // Force stop everything
-            cleanup();
+            cleanupRef.current();
             setIsListening(false);
             setError(null);
         }
 
         return () => {
+            console.log('[WakeWord] useEffect cleanup running');
             shouldBeListeningRef.current = false;
-            cleanup();
+            cleanupRef.current();
         };
-    }, [enabled, startListening, cleanup]);
+    }, [enabled]); // Only depend on enabled!
 
     return {
         isListening,
