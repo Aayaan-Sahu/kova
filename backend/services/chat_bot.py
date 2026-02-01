@@ -1,7 +1,7 @@
 import os
 from openai import OpenAI
 from services.session_state import SessionState
-from prompts.chat_bot import CHATBOT_SYSTEM_PROMPT
+from prompts.chatbot_prompts import CHATBOT_SYSTEM_PROMPT
 
 # Use the same client setup pattern but looking for Keywords AI base URL
 _client = None
