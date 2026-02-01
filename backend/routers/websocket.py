@@ -66,6 +66,7 @@ async def audio_websocket(
 
             async def receive_transcripts():
                 """Receive transcripts from Deepgram, identify speakers, run scam detection."""
+                nonlocal questions_generated_count, alerts_sent_count
                 try:
                     async for message in dg_connection:
                         if not (hasattr(message, "channel") and message.channel):
