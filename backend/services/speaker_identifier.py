@@ -39,7 +39,6 @@ async def identify_speakers(transcript: str, conversation_history: list[dict]) -
         history_context=history_context if history_context else "(No previous context)",
         transcript=transcript
     )
-
     try:
         response = await get_ai_client().chat.completions.create(
             model="groq/llama-3.3-70b-versatile",  # Using Keywords AI routing
