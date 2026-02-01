@@ -13,6 +13,10 @@ class SessionState:
         self.risk_score: int = 0
         self.confidence_score: int = 0
         
+        # Chatbot History (User <-> Protector)
+        # Format: [{"role": "user"|"assistant", "content": "..."}]
+        self.chatbot_history: List[Dict[str, str]] = []
+        
         # For the frontend
         self.latest_reasoning: str = ""
     
@@ -29,5 +33,7 @@ class SessionState:
         return {
             "risk_score": self.risk_score,
             "confidence_score": self.confidence_score,
-            "history_length": len(self.transcript_history)
+            "confidence_score": self.confidence_score,
+            "history_length": len(self.transcript_history),
+            "chat_length": len(self.chatbot_history)
         }

@@ -1,6 +1,7 @@
 import os
 from openai import OpenAI
 from services.session_state import SessionState
+from prompts.chat_bot import CHATBOT_SYSTEM_PROMPT
 
 # Use the same client setup pattern but looking for Keywords AI base URL
 _client = None
@@ -27,6 +28,20 @@ def format_history_for_context(history: list[dict]) -> str:
     
     return "\n".join(formatted)
 
+def format_chatbot_history(history: list[dict]) -> str:
+    """Format previous Q&A between User and Protector."""
+    if not history:
+        return "(No previous chat)"
+    
+    formatted = []
+    # Only show last 6 turns (3 exchanges) to keep context focused
+    for msg in history[-6:]:
+        role = "YOU" if msg["role"] == "user" else "PROTECTOR"
+        content = msg["content"]
+        formatted.append(f"{role}: {content}")
+    
+    return "\n".join(formatted)
+
 def chat_with_protector(user_query: str, session: SessionState) -> str:
     """
     Simulates a 'Protective Companion' Chatbot.
@@ -35,25 +50,18 @@ def chat_with_protector(user_query: str, session: SessionState) -> str:
     
     # 1. Prepare Context
     history_str = format_history_for_context(session.transcript_history)
+    chat_history_str = format_chatbot_history(session.chatbot_history)
     risk_info = f"Current Risk Score: {session.risk_score}/100\nConfidence Score: {session.confidence_score}/100"
     
-    system_prompt = f"""You are a trusted, protective family companion AI. You are monitoring a live phone call to help protect the user (often an elderly person) from potential scams.
+    system_prompt = CHATBOT_SYSTEM_PROMPT.format(
+        risk_info=risk_info,
+        history_str=history_str,
+        chat_history_str=chat_history_str,
+        user_query=user_query
+    )
 
-CONTEXT FROM LIVE CALL:
-{risk_info}
-
-RECENT TRANSCRIPT:
-{history_str}
-
-YOUR ROLE:
-- Verify the user's concerns using the transcript and risk scores as evidence.
-- If the risk is high, be firm but calm. Warn them clearly.
-- If the risk is low, be reassuring but cautious.
-- Your tone should be empathetic, patient, and protective (like a knowledgeable grandchild).
-- Keep answers concise (2-3 sentences max) so they can read it quickly while on the phone.
-
-User Question: {user_query}
-"""
+    # Update history immediately (optimistic)
+    session.chatbot_history.append({"role": "user", "content": user_query})
 
     try:
         response = _get_client().chat.completions.create(
@@ -66,7 +74,9 @@ User Question: {user_query}
             max_tokens=300
         )
         
-        return response.choices[0].message.content
+        answer = response.choices[0].message.content
+        session.chatbot_history.append({"role": "assistant", "content": answer})
+        return answer
         
     except Exception as e:
         print(f"Error in chat_bot: {e}")
