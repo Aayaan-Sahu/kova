@@ -339,22 +339,6 @@ export const ActiveCall = () => {
                             {status === 'safe' ? 'Protected' : status === 'warning' ? 'Analyzing...' : 'Scam Detected'}
                         </span>
                     </motion.div>
-
-                    {/* Microphone selector */}
-                    <div className="mt-4">
-                        <select
-                            value={selectedDeviceId}
-                            onChange={(e) => setSelectedDeviceId(e.target.value)}
-                            disabled={isListening}
-                            className="bg-neutral-900/60 border border-neutral-700 text-white px-4 py-2 rounded-lg backdrop-blur-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                        >
-                            {audioDevices.map(device => (
-                                <option key={device.deviceId} value={device.deviceId}>
-                                    {device.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
                 </motion.div>
 
                 {/* Main Visualizer Area */}
