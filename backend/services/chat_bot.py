@@ -57,21 +57,20 @@ def chat_with_protector(user_query: str, session: SessionState) -> str:
     session.chatbot_history.append({"role": "user", "content": user_query})
 
     try:
+        # Format the system prompt with all context
+        system_prompt = CHATBOT_SYSTEM_PROMPT.format(
+            risk_info=risk_info,
+            history_str=history_str,
+            chat_history_str=chat_history_str,
+            user_query=user_query
+        )
+        
         response = _get_client().chat.completions.create(
             model="bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0", 
-            messages=[{"role": "user", "content": "placeholder"}],  # This will be overridden
-            extra_body={
-                "prompt": {
-                    "prompt_id": "32526990b48c44daa229d34ccaa1ad25",
-                    "variables": {
-                        "risk_info": risk_info,
-                        "history_str": history_str,
-                        "chat_history_str": chat_history_str,
-                        "user_query": user_query
-                    },
-                    "override": True
-                }
-            }
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_query}
+            ]
         )
         
         answer = response.choices[0].message.content
