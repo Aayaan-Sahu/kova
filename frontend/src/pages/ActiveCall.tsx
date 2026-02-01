@@ -370,47 +370,11 @@ export const ActiveCall = () => {
                         />
                     </div>
 
-                    {/* Live Transcript Stream with Speaker Labels */}
-                    <div className="w-full h-48 overflow-hidden relative mask-image-gradient">
-                        <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-transparent to-neutral-950 z-20 pointer-events-none" />
-
-                        <div className="space-y-4 text-center px-4 relative z-10 overflow-y-auto max-h-full">
-                            <AnimatePresence mode="popLayout">
-                                {transcriptSegments.length === 0 && (
-                                    <motion.p
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        className="text-neutral-600 italic font-light"
-                                    >
-                                        {isListening ? 'Listening for conversation...' : 'Press Start to begin listening...'}
-                                    </motion.p>
-                                )}
-                                {transcriptSegments.slice(-5).map((segment, idx) => (
-                                    <motion.div
-                                        key={idx}
-                                        initial={{ opacity: 0, y: 30, filter: 'blur(10px)' }}
-                                        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                                        exit={{ opacity: 0, y: -20, filter: 'blur(5px)' }}
-                                        className="flex items-start gap-3 text-left"
-                                    >
-                                        <span className={cn(
-                                            "shrink-0 px-2 py-1 rounded text-xs font-bold uppercase",
-                                            segment.speaker === 'user'
-                                                ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                                                : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                                        )}>
-                                            {segment.speaker}
-                                        </span>
-                                        <span className={cn(
-                                            "text-lg font-medium leading-relaxed",
-                                            idx === transcriptSegments.slice(-5).length - 1 ? "text-white" : "text-neutral-400"
-                                        )}>
-                                            "{segment.text}"
-                                        </span>
-                                    </motion.div>
-                                ))}
-                            </AnimatePresence>
-                        </div>
+                    {/* Status message when listening */}
+                    <div className="w-full text-center py-4">
+                        <p className="text-neutral-500 italic font-light text-sm">
+                            {isListening ? 'Listening for conversation...' : 'Press Start to begin listening...'}
+                        </p>
                     </div>
 
                     {/* Suggested Questions */}

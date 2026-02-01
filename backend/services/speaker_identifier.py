@@ -1,3 +1,4 @@
+from openai import AsyncOpenAI
 import os
 from dotenv import load_dotenv
 from groq import AsyncGroq
@@ -6,6 +7,16 @@ load_dotenv()
 
 # Initialize Groq client
 groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
+
+ai_client = None
+def get_ai_client():
+    global ai_client
+    if ai_client is None:
+        ai_client = AsyncOpenAI(
+            base_url="https://api.keywordsai.co/api",
+            api_key=os.getenv("KEYWORDS_API_KEY"),
+        )
+    return ai_client
 
 async def identify_speakers(transcript: str, conversation_history: list[dict]) -> list[dict]:
     """
@@ -48,8 +59,15 @@ If you cannot determine the speaker, default to "caller" for statements and "use
 JSON response:"""
 
     try:
-        response = await groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",  # Fast and accurate
+        # response = await groq_client.chat.completions.create(
+        #     model="llama-3.3-70b-versatile",  # Fast and accurate
+        #     messages=[{"role": "user", "content": prompt}],
+        #     temperature=0.1,  # Low temperature for consistent output
+        #     max_tokens=500,
+        # )
+
+        response = await get_ai_client().chat.completions.create(
+            model="groq/llama-3.3-70b-versatile",  # Fast and accurate
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,  # Low temperature for consistent output
             max_tokens=500,
