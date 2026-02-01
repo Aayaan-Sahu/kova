@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { AudioVisualizer } from '../components/AudioVisualizer';
 import { cn } from '../utils/cn';
@@ -28,6 +28,8 @@ interface TranscriptMessage {
 
 export const ActiveCall = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const callerPhoneNumber = (location.state as { callerPhoneNumber?: string })?.callerPhoneNumber || '';
     const [riskScore, setRiskScore] = useState(0);
     const [confidenceScore, setConfidenceScore] = useState(0);
     const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([]);
@@ -141,7 +143,7 @@ export const ActiveCall = () => {
             const processor = audioContext.createScriptProcessor(4096, 1, 1);
             processorRef.current = processor;
 
-            const wsUrl = `ws://localhost:8000/ws/audio?sample_rate=${audioContext.sampleRate}`;
+            const wsUrl = `ws://localhost:8000/ws/audio?sample_rate=${audioContext.sampleRate}&caller_phone_number=${encodeURIComponent(callerPhoneNumber)}`;
             socketRef.current = new WebSocket(wsUrl);
 
             socketRef.current.onopen = () => {
