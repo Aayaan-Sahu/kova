@@ -49,10 +49,12 @@ Kova is a real-time scam call protection system designed to help older adults st
 
 2. Create a `.env` file based on `.env.template`:
    ```
-   GOOGLE_API_KEY=your_key
-   SUPABASE_URL=your_url
-   DEEPGRAM_API_KEY=your_key
-   GROQ_API_KEY=your_key
+   DEEPGRAM_API_KEY=
+   GROQ_API_KEY=
+   KEYWORDS_AI_API_KEY=
+   SUPABASE_URL=
+   SUPABASE_KEY=
+   SUPABASE_SERVICE_KEY=
    ```
 
 3. Install dependencies (using uv):
@@ -72,18 +74,12 @@ Kova is a real-time scam call protection system designed to help older adults st
    cd kova/frontend
    ```
 
-2. Create a `.env` file with your Supabase credentials:
-   ```
-   VITE_SUPABASE_URL=your_url
-   VITE_SUPABASE_ANON_KEY=your_key
-   ```
-
-3. Install dependencies:
+2. Install dependencies:
    ```bash
    npm install
    ```
 
-4. Run the development server:
+3. Run the development server:
    ```bash
    npm run dev
    ```
