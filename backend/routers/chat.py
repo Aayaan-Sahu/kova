@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from services import session_manager
 from services.chat_bot import chat_with_protector
@@ -13,7 +13,7 @@ class ChatResponse(BaseModel):
     response: str
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest):
+def chat_endpoint(request: ChatRequest, background_tasks: BackgroundTasks):
     """
     Endpoint for the 'Protective Companion' chatbot.
     Retrieves the live session state and generates a contextual answer.
@@ -35,9 +35,9 @@ async def chat_endpoint(request: ChatRequest):
     # We treat this as a "USER_INPUT" chunk which the prompt now prioritizes.
     from services.workflow import process_chunk
     
-    # We fire and forget this processing so we don't block the chat response too much
-    # (Though in sync python this still blocks. For hackathon speed it's fine.)
-    process_chunk(
+    # Run in background to not block the response
+    background_tasks.add_task(
+        process_chunk,
         new_chunk={"speaker": "USER_INPUT", "text": request.query},
         transcript_history=session.transcript_history,
         risk_score=session.risk_score,
