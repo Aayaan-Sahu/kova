@@ -32,6 +32,7 @@ Kova is a real-time scam call protection system designed to help older adults st
 
 ## Prerequisites
 
+- **macOS required**: The alert system uses AppleScript to send iMessages, so the backend must run on macOS
 - Python 3.13+
 - Node.js
 - Supabase account
@@ -86,8 +87,6 @@ Kova is a real-time scam call protection system designed to help older adults st
    ```bash
    npm run dev
    ```
-
-## Project Structure
 
 ## Project Structure
 
