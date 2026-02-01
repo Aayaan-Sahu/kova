@@ -49,10 +49,10 @@ export const Signup = () => {
         const { error: signUpError } = await signUp(formData.email, formData.password, {
             full_name: formData.fullName,
             phone_number: formData.phoneNumber,
-            emergency_contact_1_name: formData.emergencyContact1Name || null,
-            emergency_contact_1_phone: formData.emergencyContact1Phone || null,
-            emergency_contact_2_name: formData.emergencyContact2Name || null,
-            emergency_contact_2_phone: formData.emergencyContact2Phone || null,
+            emergency_contact_one_name: formData.emergencyContact1Name || null,
+            emergency_contact_one_number: formData.emergencyContact1Phone || null,
+            emergency_contact_two_name: formData.emergencyContact2Name || null,
+            emergency_contact_two_number: formData.emergencyContact2Phone || null,
         });
 
         if (signUpError) {

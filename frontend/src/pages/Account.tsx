@@ -31,10 +31,10 @@ export const Account = () => {
                 firstName: nameParts[0] || '',
                 lastName: nameParts.slice(1).join(' ') || '',
                 phoneNumber: profile.phone_number || '',
-                emergencyContact1Name: profile.emergency_contact_1_name || '',
-                emergencyContact1Phone: profile.emergency_contact_1_phone || '',
-                emergencyContact2Name: profile.emergency_contact_2_name || '',
-                emergencyContact2Phone: profile.emergency_contact_2_phone || '',
+                emergencyContact1Name: profile.emergency_contact_one_name || '',
+                emergencyContact1Phone: profile.emergency_contact_one_number || '',
+                emergencyContact2Name: profile.emergency_contact_two_name || '',
+                emergencyContact2Phone: profile.emergency_contact_two_number || '',
             });
         }
     }, [profile]);
@@ -55,10 +55,10 @@ export const Account = () => {
         const { error: updateError } = await updateProfile({
             full_name: fullName,
             phone_number: formData.phoneNumber,
-            emergency_contact_1_name: formData.emergencyContact1Name || null,
-            emergency_contact_1_phone: formData.emergencyContact1Phone || null,
-            emergency_contact_2_name: formData.emergencyContact2Name || null,
-            emergency_contact_2_phone: formData.emergencyContact2Phone || null,
+            emergency_contact_one_name: formData.emergencyContact1Name || null,
+            emergency_contact_one_number: formData.emergencyContact1Phone || null,
+            emergency_contact_two_name: formData.emergencyContact2Name || null,
+            emergency_contact_two_number: formData.emergencyContact2Phone || null,
         });
 
         setIsLoading(false);
@@ -70,6 +70,8 @@ export const Account = () => {
 
         setSuccess(true);
     };
+
+    const hasData = !!profile?.full_name;
 
     return (
         <div className="min-h-screen bg-neutral-950 p-6 md:p-12">
@@ -97,17 +99,26 @@ export const Account = () => {
                     )}
 
                     <div className="space-y-4">
-                        <h2 className="text-lg font-semibold text-white">Personal Information</h2>
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-lg font-semibold text-white">Personal Information</h2>
+                            {hasData && (
+                                <span className="text-xs font-medium px-2 py-1 rounded bg-neutral-800 text-neutral-400 uppercase tracking-wider">
+                                    ReadOnly Mode
+                                </span>
+                            )}
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input
                                 label="First Name"
                                 value={formData.firstName}
                                 onChange={updateField('firstName')}
+                                disabled={hasData}
                             />
                             <Input
                                 label="Last Name"
                                 value={formData.lastName}
                                 onChange={updateField('lastName')}
+                                disabled={hasData}
                             />
                             <Input
                                 label="Email"
@@ -118,6 +129,7 @@ export const Account = () => {
                                 label="Phone Number"
                                 value={formData.phoneNumber}
                                 onChange={updateField('phoneNumber')}
+                                disabled={hasData}
                             />
                         </div>
                     </div>
@@ -132,11 +144,13 @@ export const Account = () => {
                                         label="Name"
                                         value={formData.emergencyContact1Name}
                                         onChange={updateField('emergencyContact1Name')}
+                                        disabled={hasData}
                                     />
                                     <Input
                                         label="Phone"
                                         value={formData.emergencyContact1Phone}
                                         onChange={updateField('emergencyContact1Phone')}
+                                        disabled={hasData}
                                     />
                                 </div>
                             </div>
@@ -147,23 +161,27 @@ export const Account = () => {
                                         label="Name"
                                         value={formData.emergencyContact2Name}
                                         onChange={updateField('emergencyContact2Name')}
+                                        disabled={hasData}
                                     />
                                     <Input
                                         label="Phone"
                                         value={formData.emergencyContact2Phone}
                                         onChange={updateField('emergencyContact2Phone')}
+                                        disabled={hasData}
                                     />
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="pt-6 flex justify-end">
-                        <Button type="submit" isLoading={isLoading}>
-                            <Save className="w-4 h-4 mr-2" />
-                            Save Changes
-                        </Button>
-                    </div>
+                    {!hasData && (
+                        <div className="pt-6 flex justify-end">
+                            <Button type="submit" isLoading={isLoading}>
+                                <Save className="w-4 h-4 mr-2" />
+                                Save Changes
+                            </Button>
+                        </div>
+                    )}
                 </form>
             </div>
         </div>

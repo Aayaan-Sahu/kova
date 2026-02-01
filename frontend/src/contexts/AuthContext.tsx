@@ -101,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (data.user) {
+
             // Create profile row using upsert to be more resilient
             // We use upsert because a database trigger might have already created the row
             const { error: profileError } = await supabase
@@ -109,10 +110,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     id: data.user.id,
                     full_name: profileData.full_name ?? null,
                     phone_number: profileData.phone_number ?? null,
-                    emergency_contact_1_name: profileData.emergency_contact_1_name ?? null,
-                    emergency_contact_1_phone: profileData.emergency_contact_1_phone ?? null,
-                    emergency_contact_2_name: profileData.emergency_contact_2_name ?? null,
-                    emergency_contact_2_phone: profileData.emergency_contact_2_phone ?? null,
+                    emergency_contact_one_name: profileData.emergency_contact_one_name ?? null,
+                    emergency_contact_one_number: profileData.emergency_contact_one_number ?? null,
+                    emergency_contact_two_name: profileData.emergency_contact_two_name ?? null,
+                    emergency_contact_two_number: profileData.emergency_contact_two_number ?? null,
                     updated_at: new Date().toISOString(),
                 } as any)
                 .select();
