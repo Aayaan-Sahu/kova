@@ -31,4 +31,22 @@ async def chat_endpoint(request: ChatRequest):
     # 2. Call the service logic
     answer = chat_with_protector(request.query, session)
     
+    # 3. Inject User Input into the Brain (Scam Detector)
+    # We treat this as a "USER_INPUT" chunk which the prompt now prioritizes.
+    from services.workflow import process_chunk
+    
+    # We fire and forget this processing so we don't block the chat response too much
+    # (Though in sync python this still blocks. For hackathon speed it's fine.)
+    process_chunk(
+        new_chunk={"speaker": "USER_INPUT", "text": request.query},
+        transcript_history=session.transcript_history,
+        risk_score=session.risk_score,
+        confidence_score=session.confidence_score,
+        emergency_contacts=session.emergency_contacts,
+        last_alert_time=session.last_alert_time,
+        last_question_time=session.last_question_time,
+        caller_phone_number=session.caller_phone_number,
+        suspicious_number_reported=session.suspicious_number_reported
+    )
+    
     return ChatResponse(response=answer)

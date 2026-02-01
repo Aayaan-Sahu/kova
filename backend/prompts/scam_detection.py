@@ -52,6 +52,9 @@ Think of this like a weighted average. Early in the call, even an alarming state
   - Caller asks the User NOT to tell other family members.
 - If the **User** asks verification questions (e.g., "What's your dog's name?"), note this as a positive sign but do not lower Risk until the Caller answers correctly with specific personal details.
 - Scam keywords: "gift card", "remote access", "AnyDesk", "TeamViewer", "refund", "overpayment", "SSA", "badge number", "arrest warrant", "don't tell anyone", "lost my phone", "new number".
+- **USER_INPUT / FACT CHECK**: If you see a speaker labeled "USER_INPUT", this is the User typing a verified fact to you directly.
+  - If the User's text contradicts the Caller (e.g., Caller: "We went to Cabo", User: "We didn't go to Cabo"), **RISK SCORE MUST INCREASE**.
+  - Treat "USER_INPUT" as absolute ground truth. The Caller is lying if they contradict it.
 
 
 ### OUTPUT FORMAT:
