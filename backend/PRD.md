@@ -1,240 +1,237 @@
-Product Requirement Document (PRD): kova (Python Edition)
-Version: 2.0 (FastAPI + Python Backend) Date: January 31, 2026
-1. Executive Summary
-kova is a real-time scam detection system.
-* Input: Live audio from a laptop microphone (capturing speakerphone audio).
-* Processing: Python backend streams audio to a transcription engine and analyzes text for scam patterns.
-* Output: Real-time "Safe/Danger" dashboard for the user and SMS alerts for relatives.
+# Product Requirement Document (PRD): Kova
 
-2. The Tech Stack
-* Frontend: React (Vite) + Tailwind CSS. (Keep it simple, no Next.js needed if we have a Python backend).
-* Backend: FastAPI (Python 3.10+).
-* Database: Supabase (PostgreSQL).
-* Transcription: Deepgram Python SDK (Free Tier).
-    * Why: It has a native Python library that handles the WebSocket streaming for you. It is accurate and ultra-fast.
-* Intelligence: Keywords AI (Proxy) → Groq (Llama 3 70B).
-* Notifications: Twilio (Python Helper Library).
+**Version:** 3.0 (Final Implementation)  
+**Date:** February 1, 2026
 
-3. Architecture & Data Flow
-1. React Client: Captures microphone audio → Sends binary blobs via WebSocket to FastAPI.
-2. FastAPI: Receives audio → Pushes to Deepgram Live Client.
-3. Deepgram: Returns real-time text transcript to FastAPI.
-4. FastAPI (Logic):
-    * Accumulates text buffer.
-    * Every 1-2 sentences, sends text to Keywords AI.
-    * If risk_score > 80, triggers Twilio SMS.
-    * Sends transcript + risk_score + suggested_prompt back to React via WebSocket.
+---
 
-4. Database Schema (Supabase)
-Set this up in the Supabase SQL Editor.
-SQL
+## 1. Executive Summary
 
+Kova is a real-time scam call detection and protection system.
+
+* **Input:** Live audio from a laptop microphone (capturing speakerphone audio), activated via voice command ("Kova, activate")
+* **Processing:** Python backend streams audio to Deepgram for transcription, analyzes text with LLM-powered scam detection, and orchestrates responses via LangGraph
+* **Output:** Real-time risk dashboard, AI-generated verification questions, protective AI chatbot, and instant iMessage alerts to emergency contacts
+
+---
+
+## 2. Tech Stack (Final)
+
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | React 19 + Vite + TypeScript, Tailwind CSS, Framer Motion |
+| **Backend** | FastAPI (Python 3.13+) |
+| **Database** | Supabase (PostgreSQL) |
+| **Transcription** | Deepgram SDK (Nova-2 model) |
+| **Scam Detection** | Keywords AI → Groq (Llama 3.3 70B Versatile) |
+| **AI Chatbot** | Keywords AI → Claude 3.5 Sonnet (Bedrock) |
+| **Orchestration** | LangGraph (state machine for multi-step AI workflow) |
+| **Notifications** | macOS native iMessage via AppleScript (no Twilio) |
+
+---
+
+## 3. Architecture & Data Flow
+
+```
+┌─────────────────┐      WebSocket       ┌──────────────────┐
+│   React Client  │ ◄──────────────────► │   FastAPI        │
+│                 │   (audio + JSON)     │                  │
+│  - Wake Word    │                      │  - /ws/wakeword  │
+│  - Audio Stream │                      │  - /ws/listen    │
+│  - Dashboard    │                      │  - /api/chat     │
+│  - Chat Panel   │                      │                  │
+└─────────────────┘                      └────────┬─────────┘
+                                                  │
+                    ┌─────────────────────────────┼─────────────────────────────┐
+                    │                             │                             │
+                    ▼                             ▼                             ▼
+           ┌────────────────┐           ┌─────────────────┐           ┌─────────────────┐
+           │   Deepgram     │           │   LangGraph     │           │   Supabase      │
+           │   (STT)        │           │   Workflow      │           │   (PostgreSQL)  │
+           │                │           │                 │           │                 │
+           │  Nova-2 model  │           │  1. Analyze     │           │  - profiles     │
+           │  <200ms latency│           │  2. Route       │           │  - suspicious   │
+           └────────────────┘           │  3. Question/   │           │    _numbers     │
+                                        │     Alert       │           └─────────────────┘
+                                        └─────────────────┘
+                                                  │
+                           ┌──────────────────────┼──────────────────────┐
+                           │                      │                      │
+                           ▼                      ▼                      ▼
+                   ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
+                   │ Scam Detector│      │ Question Gen │      │ Alert Sender │
+                   │ (Llama 3.3)  │      │ (Llama 3.3)  │      │ (iMessage)   │
+                   └──────────────┘      └──────────────┘      └──────────────┘
+```
+
+---
+
+## 4. Core Features
+
+### 4.1 Voice-Activated Wake Word
+- User says **"Kova, activate"** to start protection
+- Uses Deepgram with phonetic fuzzy matching (handles "cova", "kovah", etc.)
+- Hands-free activation for accessibility
+
+### 4.2 Two-Stage Transcription Pipeline
+**Stage 1: Speech-to-Text (Deepgram)**
+- Nova-2 model with sub-200ms latency
+- Raw transcript text via WebSocket streaming
+
+**Stage 2: Speaker Identification (Llama 3.3 70B)**
+- LLM analyzes raw transcript to determine who is speaking
+- Uses conversation history for context (last 10 segments)
+- Outputs labeled segments: `{"speaker": "user"|"caller", "text": "..."}`
+- Handles overlapping speech and ambiguous cases intelligently
+
+### 4.3 LangGraph Scam Detection Workflow
+The AI pipeline uses LangGraph for orchestration:
+
+1. **Analyze Node:** Sends transcript to Llama 3.3 70B for risk/confidence scoring
+2. **Routing Logic:**
+   - Risk ≥80 AND Confidence ≥70 → **Alert Node** (send iMessage)
+   - Confidence <50 → **Question Generator Node** (suggest verification questions)
+   - Otherwise → Return status to frontend
+3. **Throttling:** Alerts rate-limited to 30s, questions to 3s
+
+### 4.4 AI Chatbot ("Protector")
+- Powered by **Claude 3.5 Sonnet** via Keywords AI
+- User can ask mid-call: "Is this a scam?", "What should I ask them?"
+- Has full context of the live transcript and risk scores
+
+### 4.5 Verification Question Generation
+- When confidence is low, AI generates questions like:
+  - "Ask for their employee ID and direct callback number"
+  - "Request they send written documentation before any action"
+- Displayed prominently on the dashboard
+
+### 4.6 Emergency Alerts (iMessage)
+- Uses **macOS native AppleScript** to send iMessages (bypasses Twilio verification)
+- Sends to up to 2 emergency contacts configured in user profile
+- Message includes risk score, confidence, and reasoning
+
+### 4.7 Suspicious Number Database
+- When a scam is confirmed, the caller's number is reported to `suspicious_numbers` table
+- Community-driven database for future pattern detection
+
+---
+
+## 5. Database Schema (Supabase)
+
+```sql
 -- Table: Users (Linked to Supabase Auth)
 create table profiles (
   id uuid references auth.users not null primary key,
   full_name text,
-  phone_number text, -- The user's number
+  phone_number text,
   emergency_contact_one_name text,
-  emergency_contact_one_number text -- The relative to alert
+  emergency_contact_one_number text,
   emergency_contact_two_name text,
-  emergency_contact_two_number text -- The relative to alert
+  emergency_contact_two_number text
 );
 
--- Table: Known Scams (for blocking numbers)
+-- Table: Known Scams (community database)
 create table suspicious_numbers (
   phone_number text primary key,
   report_count int default 1,
   last_reported_at timestamptz default now()
 );
+```
 
-5. End-to-End Implementation Plan
-Phase 1: Project Setup (Python & React)
-A. Backend (FastAPI) Structure your folder like this:
-Plaintext
+---
 
+## 6. Backend Structure
+
+```
 /backend
-  ├── main.py            # Entry point
-  ├── .env               # API Keys
-  ├── requirements.txt   # fastapi, uvicorn, deepgram-sdk, supabase, openai, twilio
-  └── /routers
-      └── websocket.py   # The core audio logic
-B. Frontend (React + Vite)
-Bash
+  ├── main.py                    # FastAPI entry point
+  ├── .env                       # API Keys (DEEPGRAM, KEYWORDS_AI, SUPABASE)
+  ├── pyproject.toml             # Dependencies (uv/pip)
+  ├── /routers
+  │   ├── wakeword.py            # /ws/wakeword - voice activation
+  │   ├── audio.py               # /ws/listen - main audio stream
+  │   └── chat.py                # /api/chat - AI chatbot
+  ├── /services
+  │   ├── deepgram_client.py     # Deepgram connection helper
+  │   ├── scam_detector.py       # Llama 3.3 scam analysis
+  │   ├── question_generator.py  # Verification question AI
+  │   ├── chat_bot.py            # Claude 3.5 Sonnet chatbot
+  │   ├── alert_sender.py        # iMessage via AppleScript
+  │   ├── workflow.py            # LangGraph orchestration
+  │   ├── session_state.py       # Per-session state management
+  │   └── supabase_client.py     # Database operations
+  └── /prompts
+      ├── scam_detection.py      # System prompts for scam AI
+      ├── question_gen.py        # Prompts for question generation
+      └── chatbot_prompts.py     # Prompts for Protector chatbot
+```
 
-npm create vite@latest frontend -- --template react-ts
-npm install lucide-react socket.io-client
+---
 
-Phase 2: The WebSocket Audio Stream (The Hardest Part)
-This is where Python shines. We need a WebSocket endpoint that accepts audio and keeps a connection open to Deepgram.
-backend/routers/websocket.py (Conceptual Code):
-Python
+## 7. Frontend Pages
 
-from fastapi import APIRouter, WebSocket
-from deepgram import DeepgramClient, LiveOptions
-import os
-import asyncio
+| Page | Description |
+|------|-------------|
+| **Login** | Supabase Auth login |
+| **Signup** | New user registration with emergency contact setup |
+| **Dashboard** | Main hub - start protection, view status |
+| **ActiveCall** | Live call view with transcript, risk meter, suggested questions, chat panel |
+| **Analytics** | Call history, risk trends, visualizations |
+| **Account** | Profile settings, emergency contacts |
 
-router = APIRouter()
+---
 
-@router.websocket("/ws/listen")
-async def listen(websocket: WebSocket):
-    await websocket.accept()
-    
-    # 1. Initialize Deepgram (The "Free" Transcription)
-    deepgram = DeepgramClient(os.getenv("DEEPGRAM_API_KEY"))
-    
-    # 2. Setup the Deepgram Live Connection
-    dg_connection = deepgram.listen.live.v("1")
-    
-    # Define what happens when we get text back
-    def on_message(self, result, **kwargs):
-        sentence = result.channel.alternatives[0].transcript
-        if len(sentence) > 0:
-            # TODO: Send this sentence to Scam Detector AI
-            # TODO: Send result back to Frontend
-            print(f"Transcript: {sentence}")
+## 8. Key Implementation Details
 
-    dg_connection.on(LiveTranscriptionEvents.Transcript, on_message)
+### Audio Streaming
+- MediaRecorder with 250ms timeslice for low latency
+- Linear16 PCM at 48kHz sample rate
+- Sent as binary blobs over WebSocket
 
-    # 3. Configure options (English, Smart Formatting)
-    options = LiveOptions(
-        model="nova-2", 
-        language="en-US", 
-        smart_format=True,
-    )
-    
-    await dg_connection.start(options)
+### Session Management
+- Each WebSocket connection has isolated `SessionState`
+- Tracks: transcript_history, risk_score, confidence_score, chatbot_history
+- Prevents cross-session contamination
 
-    # 4. Loop: Receive Audio from React -> Send to Deepgram
-    try:
-        while True:
-            # Receive audio blob from frontend
-            data = await websocket.receive_bytes()
-            # Send to Deepgram
-            await dg_connection.send(data)
-    except Exception as e:
-        print(f"Connection closed: {e}")
-    finally:
-        await dg_connection.finish()
+### Rate Limiting
+- Alerts: Max 1 per 30 seconds
+- Questions: Max 1 per 3 seconds
+- Prevents spam to emergency contacts
 
-Phase 3: The "Scam Brain" (Keywords AI + Groq)
-We need a function that takes the transcript and decides if it's a scam.
-backend/services/scam_detector.py:
-Python
+---
 
-from openai import OpenAI
-import os
-import json
+## 9. Environment Variables
 
-# Initialize Keywords AI (acting as OpenAI)
-client = OpenAI(
-    base_url="https://api.keywordsai.co/api",
-    api_key=os.getenv("KEYWORDS_AI_API_KEY")
-)
+```env
+DEEPGRAM_API_KEY=your_deepgram_key
+KEYWORDS_AI_API_KEY=your_keywords_ai_key
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-def analyze_transcript(transcript_text):
-    response = client.chat.completions.create(
-        model="llama-3-70b-8192", # Using Groq via Keywords AI
-        messages=[
-            {"role": "system", "content": """
-                You are a scam detection AI. Return a JSON object with:
-                - risk_score (0-100)
-                - reasoning (string)
-                - suggested_question (string, something the user can ask to verify the caller)
-                
-                Example JSON:
-                {"risk_score": 85, "reasoning": "Caller asking for gift cards", "suggested_question": "Ask for their employee ID"}
-            """},
-            {"role": "user", "content": transcript_text}
-        ],
-        extra_body={"prompt_name": "kova-guard-v1"} # Optional: Track in Keywords Dashboard
-    )
-    
-    # Parse the JSON string from the LLM
-    content = response.choices[0].message.content
-    return json.loads(content) 
+---
 
-Phase 4: Frontend Audio Capture
-The React app needs to capture audio and send it to the FastAPI WebSocket.
-frontend/src/components/AudioRecorder.tsx:
-TypeScript
+## 10. Running the Project
 
-import { useState, useRef } from 'react';
+**Backend:**
+```bash
+cd backend
+uv sync  # or pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
 
-const AudioRecorder = () => {
-  const [status, setStatus] = useState('idle');
-  const socketRef = useRef<WebSocket | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-  const startRecording = async () => {
-    // 1. Open WebSocket to FastAPI
-    socketRef.current = new WebSocket('ws://localhost:8000/ws/listen');
+---
 
-    // 2. Get Microphone Stream
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    
-    // 3. Setup MediaRecorder
-    mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+## 11. Demo Tips
 
-    // 4. Send audio chunks every 250ms
-    mediaRecorderRef.current.ondataavailable = (event) => {
-      if (event.data.size > 0 && socketRef.current?.readyState === WebSocket.OPEN) {
-        socketRef.current.send(event.data);
-      }
-    };
-
-    mediaRecorderRef.current.start(250); // Chunk size
-    setStatus('recording');
-  };
-
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    socketRef.current?.close();
-    setStatus('idle');
-  };
-
-  return (
-    <button onClick={status === 'idle' ? startRecording : stopRecording}>
-      {status === 'idle' ? 'Start Protection' : 'Stop'}
-    </button>
-  );
-};
-
-Phase 5: The "Interrogation" & Alerts
-Logic in FastAPI (websocket.py): Update the on_message function to actually do the work.
-Python
-
-accumulated_transcript = ""
-
-def on_message(self, result, **kwargs):
-    sentence = result.channel.alternatives[0].transcript
-    
-    if len(sentence) > 10: # Only analyze substantial phrases
-        # 1. Get Analysis
-        analysis = analyze_transcript(sentence)
-        
-        # 2. Check for Danger
-        if analysis['risk_score'] > 85:
-            send_sms_alert() # Call Twilio function
-            
-        # 3. Send back to Frontend
-        asyncio.run(websocket.send_json({
-            "type": "analysis",
-            "transcript": sentence,
-            "risk_score": analysis['risk_score'],
-            "prompt": analysis['suggested_question']
-        }))
-
-6. Onboarding Flow (The Demo Setup)
-Since you are demoing this, you need a smooth setup flow:
-1. Login: User enters name/email (Supabase Auth).
-2. Relative Setup: User enters "Grandson's Phone Number". Save this to Supabase profiles.
-3. Mic Check: A visualizer bar that bounces when you speak (proves it's working).
-4. Simulation Mode (Crucial for Demo):
-    * Add a toggle on the frontend: "Simulation Mode".
-    * If active, instead of using the microphone, the frontend plays a pre-recorded mp3 of a scam call (so the judges hear it clearly) and streams that audio to the backend. This guarantees a perfect demo every time.
-7. Final Checklist for Success
-1. Latency: Ensure the MediaRecorder timeslice is small (250ms). If it's too large (e.g., 1000ms), the transcription will lag by 1 second.
-2. Venv: Use a Python virtual environment (python -m venv venv) so your libraries don't conflict.
-3. Twilio Verified IDs: If you use a free Twilio account, you can only send SMS to numbers you have verified. Do this before the presentation.
-4. Deepgram API Key: Keep it in your .env file on the backend. Do not expose it to the frontend.
+1. **Wake Word:** Say "Kova, activate" clearly - the system uses phonetic matching
+2. **Simulate Scam:** Have someone say scam phrases like "gift cards", "IRS", "arrest warrant"
+3. **Chat with Protector:** Ask "Should I trust this caller?" mid-call
+4. **Emergency Alerts:** Ensure iMessage is configured and emergency contacts are set in profile
